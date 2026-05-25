@@ -106,6 +106,7 @@ describe('package.json exports map', () => {
       './docx/wrapTypes',
       './docx/serializer',
       './agent',
+      './markdown',
       './layout-engine',
       './layout-painter',
       './layout-bridge',

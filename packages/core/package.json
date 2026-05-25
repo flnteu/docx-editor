@@ -378,6 +378,9 @@
       "agent": [
         "./dist/agent/index.d.ts"
       ],
+      "markdown": [
+        "./dist/markdown/index.d.ts"
+      ],
       "layout-engine": [
         "./dist/layout-engine/index.d.ts"
       ],
