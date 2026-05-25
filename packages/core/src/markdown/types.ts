@@ -200,12 +200,20 @@ export interface PagedMarkdownOptions extends MarkdownOptionsBase {
    *   case where no pagination cache exists). Recommended for production.
    * - Falsy / unset (default): heuristic only.
    *
-   * Caveat: layout-engine output won't always byte-match Word's pagination
-   * even with substitute fonts, because Skia (used by `@napi-rs/canvas`)
-   * computes glyph metrics slightly differently than Blink (used by
-   * browsers) and Word's renderer. Expect occasional ±1 page divergence
-   * on cache-less docs. The heuristic is more accurate when Word has
-   * touched the doc — keep `'fallback'` as the default.
+   * Caveat: layout-engine output won't always byte-match Word's
+   * pagination, even with substitute fonts. Word's text shaper applies
+   * kerning, ligatures, and line-break rules that don't fully map onto
+   * vanilla Skia (what `@napi-rs/canvas` provides). Small per-line width
+   * differences accumulate across long docs and can tip content across
+   * page boundaries, giving occasional ±1 page divergence on cache-less
+   * docs. For cache-bearing docs the heuristic is byte-exact — that's
+   * why `'fallback'` is the recommended setting (heuristic first,
+   * layout engine only when the cache is genuinely absent).
+   *
+   * If pixel-perfect Word matching is required for cache-less docs, the
+   * only known options are (1) opening in Word and resaving, or
+   * (2) running headless Chrome and using the live editor's
+   * `pagedEditorRef.getLayout()`.
    */
   useLayoutEngine?: boolean | 'fallback';
 }
