@@ -1,0 +1,103 @@
+name: FluentaOne supply-chain gate
+
+# Vendor gate for the `flnteu/docx-editor` fork — runs the security +
+# license + reproducible-build audit defined in
+# `flnt-docs-central/architecture/spikes/SPIKE-DOCEDIT-001-eigenpal-evaluation.md`
+# §"Production gates".
+#
+# This workflow does NOT replace the upstream CI (lint / test / build
+# from `.github/workflows/ci.yml`). It runs ADDITIONALLY on every push
+# to the fork's main branch + on every tag matching `v*` that we
+# intend to publish to the FluentaOne private registry.
+#
+# Pulling in a new upstream version:
+#   1. Sync the fork's main from upstream (`gh repo sync flnteu/docx-editor`).
+#   2. Tag the synced commit `v<upstream-version>-flnteu` to trigger this gate.
+#   3. The gate must be green before the tag becomes the FluentaOne
+#      private-registry source.
+#
+# Failure semantics — each check fails closed:
+#   - npm audit at the `high` band → block.
+#   - License outside the permissive allowlist → block.
+#   - Build / typecheck failure → block.
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: npm audit (band high)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install (lockfile-only, no scripts)
+        run: |
+          # The upstream uses bun; install only direct deps via npm for
+          # the audit pass so the audit lockfile is consistent. We do NOT
+          # use `npm ci` (no package-lock.json in the repo) — instead
+          # generate a temporary lockfile via `npm install --package-lock-only`.
+          npm install --package-lock-only --ignore-scripts
+      - name: npm audit
+        run: npm audit --audit-level=high --omit=dev
+
+  licenses:
+    name: License allowlist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install (lockfile-only, no scripts)
+        run: |
+          npm install --package-lock-only --ignore-scripts
+      - name: license-checker
+        run: |
+          npx --yes license-checker-rseidelsohn \
+            --production \
+            --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;BSD-2-Clause;ISC;0BSD;CC0-1.0;CC-BY-4.0;Unlicense" \
+            --excludePackages "@eigenpal/docx-editor-react;@eigenpal/docx-editor-core" \
+            --summary
+
+  reproducible-build:
+    name: Reproducible build + typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.1.0"
+      - name: bun install (frozen lockfile)
+        run: bun install --frozen-lockfile
+      - name: typecheck (each package)
+        run: bun run -F "*" typecheck
+      - name: build (each package)
+        run: bun run -F "*" build
+
+  fork-integrity:
+    name: Fork integrity check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert this is the FluentaOne fork
+        run: |
+          # Defence-in-depth: refuse to run the gate on an upstream
+          # PR that gets mirrored into the fork. The fork's repo
+          # name + owner must match before we publish anything to
+          # the FluentaOne private registry.
+          if [ "$GITHUB_REPOSITORY" != "flnteu/docx-editor" ]; then
+            echo "::error::Refusing to run the FluentaOne supply-chain gate on $GITHUB_REPOSITORY"
+            exit 1
+          fi
