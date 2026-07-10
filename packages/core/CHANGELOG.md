@@ -1,5 +1,111 @@
 # @eigenpal/docx-editor-core
 
+## 1.1.0
+
+### Minor Changes
+
+- 9d7138e: Add `fonts` prop on `<DocxEditor>` for declarative custom font registration. Each entry injects an `@font-face` pointing at the URL you provide. Multiple entries can share `family` to register different weights. Fixes #620.
+
+  ```tsx
+  <DocxEditor
+    fonts={[
+      { family: 'Custom Sans', src: '/fonts/CustomSans-Regular.woff2' },
+      { family: 'Custom Sans', src: '/fonts/CustomSans-Bold.woff2', weight: 700 },
+    ]}
+  />
+  ```
+
+  For Google Fonts, keep using `loadFont(name)` from `@eigenpal/docx-editor-core/utils` — it loads the family from the Google Fonts CSS API directly:
+
+  ```ts
+  import { loadFont } from '@eigenpal/docx-editor-core/utils';
+  import { useEffect } from 'react';
+
+  useEffect(() => {
+    void loadFont('Pacifico');
+  }, []);
+  ```
+
+  Also exposes `loadFontFromUrl`, `loadFontDefinitions`, and the `FontDefinition` type from `@eigenpal/docx-editor-core/utils`.
+
+- 9d7138e: Font-load failures (Google Fonts, `loadFontFromUrl`, `loadFontFromBuffer`) now route through the React `onError` prop and the Vue `error` event instead of writing directly to the console. Wire either to pipe these into Sentry, Datadog, or your own error tracker. When no subscriber is attached (headless / SSR / pre-mount), the loader falls back to `console.warn` so errors are not silently dropped.
+
+  Adds `onFontError(callback)` to `@eigenpal/docx-editor-core/utils` for non-adapter hosts.
+
+- 42ea72d: Track structural edits as OOXML revisions in suggesting mode (fixes #614).
+
+  Authoring:
+  - Pressing Enter in suggesting mode marks the new paragraph break as
+    tracked (`<w:pPr><w:rPr><w:ins/>`); Backspace at paragraph start marks
+    the prior break as deleted (`<w:del/>`) without actually joining until
+    accepted.
+  - `addRowBelow` / `addRowAbove` / `deleteRow` in suggesting mode set
+    `trIns` / `trDel` plus mirroring `cellMarker` on each cell instead of
+    mutating the table structure.
+  - Editing paragraph properties in suggesting mode records a `pPrChange`
+    entry with the prior `ParagraphFormatting` snapshot.
+
+  Round-trip preservation:
+  - Paragraph-mark insertion / deletion (`<w:pPr><w:rPr><w:ins/></w:del/>`),
+    paragraph property changes (`<w:pPrChange>`), table row insertion /
+    deletion (`<w:trPr><w:ins/></w:del/>`), row property changes
+    (`<w:trPrChange>`), cell insertion / deletion / merge
+    (`<w:cellIns>`, `<w:cellDel>`, `<w:cellMerge>` with `w:vMerge` value
+    preserved), cell property changes (`<w:tcPrChange>`), table property
+    changes (`<w:tblPrChange>`) — all parse, round-trip, and re-emit per
+    the ECMA-376 schema (CT_PPrBase containment for `*Change` previous
+    snapshots, schema-mandated ordering, single `*Change` per parent,
+    no `w:rsid` on `CT_TrackChange` extensions).
+
+  Accept / Reject:
+  - New commands `acceptChangeById(id)` / `rejectChangeById(id)` resolve
+    any revision in one PM transaction. Per Word semantics: accept
+    `pPrIns` clears the marker; reject joins-with-next (resulting
+    paragraph inherits the second paragraph's `pPr`). Reject `pPrChange`
+    restores the prior properties onto the paragraph.
+  - `acceptAllChanges` / `rejectAllChanges` now resolve every revision
+    type (inline marks, paragraph-mark, paragraph-property, row, cell,
+    table-property), not just inline.
+
+  Sidebar:
+  - Existing TrackedChange sidebar surfaces every new revision type:
+    paragraphMarkInsertion, paragraphMarkDeletion, paragraphPropertiesChanged,
+    rowInserted, rowDeleted, rowPropertiesChanged, cellInserted, cellDeleted,
+    cellMerged, cellPropertiesChanged, tablePropertiesChanged. Accept /
+    Reject buttons route via `acceptChangeById` / `rejectChangeById`. React
+    and Vue cards both i18n-localized (15 new `revisions.*` keys across
+    all 7 locales). Multi-site revisions (row + N cells under one
+    `(id, author, date)` triple) collapse to a single sidebar entry.
+
+  Painter:
+  - Pilcrow ¶ glyph at end of revised paragraphs (insertion green,
+    deletion red strikethrough); vertical margin change-bar; colored
+    row/cell borders for trIns/trDel/cellMarker; dashed boundary for
+    unaccepted vertical cellMerge. Painter styles live in
+    `@eigenpal/docx-editor-core/prosemirror/editor.css` and both adapters
+    inherit (React + Vue parity).
+
+  What's NOT yet covered (follow-up PRs):
+  - `<w:sectPrChange>` (section property revisions)
+  - `<w:rPr><w:rPrChange>` paragraph-mark formatting (CT_ParaRPrChange,
+    distinct from run rPrChange)
+  - `<w:moveFrom>` / `<w:moveTo>` round-trip
+  - `<w:numPr><w:ins/>` (numbered-list assignment tracking)
+  - Suggesting-aware `addColumnLeft` / `addColumnRight` / `deleteColumn`
+    (TODOs in source reference the spec)
+  - Agents-package surface for the new structural-revision fields
+  - Collaboration / multi-author conflict semantics (single-user only)
+
+  OOXML conformance audit, code review, and simplification pass have
+  been folded back into this branch; see PR #616 for the per-phase
+  review history.
+
+### Patch Changes
+
+- 30c1931: Handle DOCX tables with fully covered vertical-merge rows without creating invalid empty table rows.
+- ebb85a5: Tolerate stray `&` in DOCX XML parts. Previously, a single unescaped ampersand anywhere in `document.xml`, a header, footer, or comments part would fail the whole parse with "Invalid character in entity name". Stray ampersands are now escaped before handing off to the underlying XML parser, and when a parse error still escapes through, the message includes a snippet of the bytes around the offending column.
+- e5e0997: Header/footer editing now uses the body's hidden-PM + visible-painter model: one persistent off-screen EditorView per HF rId, with the painter as the sole visible renderer in both edit and non-edit modes. Click, drag, multi-click, selection rects, right-click, image select, hyperlink, table column/row/edge resize, and field inserts (PAGE/NUMPAGES) now route through a single pointer pipeline and match body parity. Fixes #468.
+
 ## 1.0.3
 
 ### Patch Changes
