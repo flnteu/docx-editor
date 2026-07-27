@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": ["read", "edit", "create_file", "run_tests", "run_linter"],
+    "deny": ["push_to_main", "delete_branch", "run_deploy", "access_secrets", "modify_ci_config"]
+  },
+  "hooks": {
+    "PreCommit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "echo 'Pre-commit checks configured per archetype'" }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "MAX_THINKING_TOKENS": "16000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50"
+  },
+  "extraKnownMarketplaces": {
+    "fluenta": {
+      "source": { "source": "git", "url": "git@github.com:flnteu/flnt-claude-plugins.git" }
+    }
+  },
+  "enabledPlugins": {
+    "clickup-tasks@fluenta": true,
+    "security-audit@fluenta": true,
+    "code-quality@fluenta": true,
+    "git-workflow@fluenta": true,
+    "docs-maintenance@fluenta": true,
+    "architecture@fluenta": true
+  }
+}
