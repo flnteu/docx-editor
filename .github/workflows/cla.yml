@@ -69,12 +69,35 @@ jobs:
           # Always-allowlisted: bots, plus named maintainer handles as a
           # safety net (in case the org-membership lookup fails for any
           # reason — private membership, transient API error, etc.).
-          ALLOWLIST: 'dependabot[bot] github-actions[bot] renovate[bot] jedrazb'
+          #
+          # FluentaOne fork (DEV-1218): FluentaOne staff are added here
+          # because this fork's internal PRs are not contributions to
+          # Eigenpal. They change fork-local configuration only
+          # (`.claude/**`, `.github/workflows/flnteu-*.yml`, this repo's
+          # vendor gate) and are never submitted upstream, so Eigenpal's
+          # ICLA — which grants Eigenpal a perpetual licence over
+          # "present and future Contributions" — is the wrong instrument
+          # for them. The allowlist (not CLA_ORG) is what actually takes
+          # effect: `cla_org_member` calls `gh api orgs/<org>/members/...`
+          # with an Eigenpal GitHub App token, which has no read access to
+          # the flnteu org, so the lookup fails closed regardless of what
+          # CLA_ORG says. Add a handle here as each FluentaOne contributor
+          # opens their first PR against the fork.
+          #
+          # Anyone intending to send work UPSTREAM to Eigenpal must still
+          # sign — and if the IP belongs to their employer, §4 of CLA.md
+          # requires employer permission or a Corporate CLA, not this one.
+          ALLOWLIST: 'dependabot[bot] github-actions[bot] renovate[bot] jedrazb kornel-schrenk'
           # Auto-allowlist members of this org. Public members are recognized
           # via the workflow's GITHUB_TOKEN; private members will be prompted
           # to sign once (then they're recorded like anyone else). To turn the
           # org check off entirely, leave CLA_ORG empty.
-          CLA_ORG: 'eigenpal'
+          #
+          # Repointed eigenpal -> flnteu for the fork (DEV-1218): the org
+          # whose members legitimately bypass Eigenpal's CLA here is the one
+          # that owns this fork. See the ALLOWLIST note above for why this
+          # line is documentation of intent rather than the effective gate.
+          CLA_ORG: 'flnteu'
           CLA_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main/CLA.md
           SIGN_PHRASE: 'I have read the CLA Document and I hereby sign the CLA'
         run: bash .github/cla/cla.sh
