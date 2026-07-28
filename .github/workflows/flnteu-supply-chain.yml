@@ -73,57 +73,42 @@ jobs:
         # any dependency's lifecycle scripts before its own code has even
         # been through the audit below.
         run: bun install --frozen-lockfile --ignore-scripts
-      - name: bun audit
+      - name: bun audit (published-package closure)
         # `bun audit` (bun >=1.2) reads bun.lock directly — no
-        # node_modules required — and has no production/dev scope flag
-        # (unlike license-checker's --production below): it always audits
-        # every resolved package, dev included. That is a superset of the
-        # original "production scope" ask, not a narrowing: it also
-        # catches a high/critical finding that lives only in a
-        # devDependency or an examples/* demo app, which --omit=dev would
-        # have missed.
+        # node_modules required — but it has no scope flag: it audits every
+        # resolved package, including the 11 upstream examples/* demo apps
+        # (next, nuxt, remix, astro, ...) that this fork never builds,
+        # publishes, or serves (the reproducible-build job below builds
+        # packages/* only). Historically those demos produced nearly all of
+        # the findings, so the gate blocked on risk that never ships.
         #
-        # Verified locally (DEV-1218) that --audit-level=high fails closed:
-        # exit 1 when a high-or-above finding exists (tested against a
-        # known "critical" and a known "high" advisory), exit 0 when only
-        # moderate/low findings exist (tested against a known
-        # moderate-only advisory).
+        # .github/flnteu/audit-scope.mjs therefore filters the audit to the
+        # transitive dependency closure of the packages/* workspaces plus
+        # the root build tooling (devDependencies included on purpose — the
+        # toolchain that produces the published artifacts is supply-chain
+        # surface). In-scope high/critical advisories fail closed exactly
+        # like plain `bun audit --audit-level=high`; examples/*-only
+        # findings are printed as informational. See the script header for
+        # the mechanics and the conservative name-level graph walk.
         #
         # Remediation status (DEV-1218, 2026-07-28): the ~41 pre-existing
         # high/critical findings were fixed by a full lockfile re-resolve
         # plus root-level overrides (tar, sharp, postcss,
         # @vanilla-extract/integration — see package.json "overrides").
-        # The --ignore list below is the documented remainder; each entry
-        # has a removal condition:
+        # The documented ignore list is down to one entry:
         #
-        #   GHSA-mh99-v99m-4gvg (brace-expansion, DoS): patched only in
-        #     5.0.8, which is inside the bunfig minimumReleaseAge window
-        #     until 2026-07-30; the 1.x/2.x copies under older minimatch
-        #     parents (eslint, api-extractor, @remix-run/dev) have no
-        #     patched release at all — they clear only as those parents
-        #     move to minimatch >=10.2.6. Dev-time tooling, DoS-only
-        #     (CWE-400). Revisit after 2026-07-30 lock refresh.
-        #
-        #   GHSA-rxv8-25v2-qmq8 (turbo-stream via @remix-run 2.x): fix is
-        #     turbo-stream 3.x, which remix 2 cannot take (breaking wire
-        #     format; examples/remix has v3_singleFetch enabled). Demo app
-        #     only, never deployed. Clears when the remix example migrates
-        #     to react-router 7 (follow-up).
-        #
-        #   GHSA-6gpp-xcg3-4w24 / GHSA-89xv-2m56-2m9x /
-        #   GHSA-m99w-x7hq-7vfj / GHSA-p9j2-gv94-2wf4 (next 16.2.10):
-        #     patched in 16.2.11 (published 2026-07-21), which is inside
-        #     the minimumReleaseAge window until 2026-07-28T16:00Z. Demo
-        #     apps only. Refresh bun.lock and DROP these four ignores
-        #     after 2026-07-28 — do not weaken minimumReleaseAge for this.
+        #   GHSA-mh99-v99m-4gvg (brace-expansion, DoS, CWE-400): reaches
+        #     the closure through minimatch chains under eslint,
+        #     @microsoft/api-extractor and vue-tsc. Patched only in 5.0.8,
+        #     which is inside the bunfig minimumReleaseAge window until
+        #     2026-07-30 — and the 1.x/2.x copies under older minimatch
+        #     parents have no patched release at all; they clear only as
+        #     those parents move to minimatch >=10.2.6. Dev-time tooling,
+        #     DoS-only. Revisit after a lock refresh past 2026-07-30.
         run: |
-          bun audit --audit-level=high \
-            --ignore=GHSA-mh99-v99m-4gvg \
-            --ignore=GHSA-rxv8-25v2-qmq8 \
-            --ignore=GHSA-6gpp-xcg3-4w24 \
-            --ignore=GHSA-89xv-2m56-2m9x \
-            --ignore=GHSA-m99w-x7hq-7vfj \
-            --ignore=GHSA-p9j2-gv94-2wf4
+          bun audit --json > /tmp/bun-audit.json || true
+          bun .github/flnteu/audit-scope.mjs /tmp/bun-audit.json bun.lock \
+            --ignore=GHSA-mh99-v99m-4gvg
 
   licenses:
     name: License allowlist
