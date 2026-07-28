@@ -31,13 +31,28 @@ jobs:
     # this if: when renaming the App would let the bot self-sign again.
     # GitHub Actions does not allow the env context in job-level if:, so
     # this can't be DRYed via a workflow-level variable.
+    #
+    # Fork guard (DEV-1218): the whole job only makes sense on the
+    # upstream eigenpal repo. The "Mint App installation token" step needs
+    # the eigenpal-release-pal App's credentials
+    # (secrets.RELEASE_PAL_APP_ID / RELEASE_PAL_PRIVATE_KEY), which do not
+    # and must not exist on the flnteu fork — so on the fork the job died
+    # at that step on every PR, leaving a phantom red "cla" check that no
+    # allowlist/CLA_ORG tweak can fix (the ALLOWLIST logic runs only after
+    # a token is minted). Fork-internal PRs are not contributions to
+    # Eigenpal (see the ALLOWLIST note below), so the honest behavior on
+    # the fork is to skip. `secrets` is not available in job-level if:,
+    # hence the repo-owner check. If the fork ever wants its own CLA gate
+    # for external contributors, it needs its own GitHub App + secrets and
+    # this condition adjusted.
     if: |
-      github.event_name == 'pull_request_target' ||
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request != null &&
-       github.event.comment.user.login != 'eigenpal-release-pal[bot]' &&
-       (contains(github.event.comment.body, 'I have read the CLA Document and I hereby sign the CLA') ||
-        contains(github.event.comment.body, '!cla-check')))
+      github.repository_owner == 'eigenpal' &&
+      (github.event_name == 'pull_request_target' ||
+       (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request != null &&
+        github.event.comment.user.login != 'eigenpal-release-pal[bot]' &&
+        (contains(github.event.comment.body, 'I have read the CLA Document and I hereby sign the CLA') ||
+         contains(github.event.comment.body, '!cla-check'))))
     steps:
       # Mints an installation token for the eigenpal-release-pal App. That App
       # has contents:write + pull-requests:write + statuses:write on this repo
