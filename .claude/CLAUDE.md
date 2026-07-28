@@ -210,3 +210,15 @@ Don't: `@`-mention contributors, reference unrelated PR/issue numbers, list chan
 Issue tracker: `gh issue view <N> --repo eigenpal/docx-editor`. Dev server: `bun run dev` → `http://localhost:5173/`. Commit format: `fix: ... (fixes #N)`.
 
 Toolbar icons: Material Symbol SVGs, saved locally. Screenshots → `screenshots/`.
+
+## Claude Code scaffolding (DEV-1256)
+
+Workflow guidance comes from the **fluenta plugin marketplace**
+(`github.com/flnteu/flnt-claude-plugins`), not from this repo.
+`.claude/settings.json` declares the marketplace and enables `clickup-tasks`, `security-audit`, `code-quality`, `git-workflow`, `docs-maintenance`, `architecture` —
+Claude Code prompts you to install them on first open. Skills are all
+`flnt-` prefixed (type `/flnt` to list them). Do not recreate
+`.claude/skills/`, `.claude/agents/`, `.claude/commands/`,
+`.claude/knowledge/`, `.claude/rules/`, or `.mcp.json` here — this repo is
+on `flnt-ai-config`'s `repo-map.yaml` skip list, so `bootstrap.sh` and
+`refresh-rules.sh` leave it alone (DEV-1218).
