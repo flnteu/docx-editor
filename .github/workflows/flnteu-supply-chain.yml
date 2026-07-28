@@ -87,14 +87,43 @@ jobs:
         # exit 1 when a high-or-above finding exists (tested against a
         # known "critical" and a known "high" advisory), exit 0 when only
         # moderate/low findings exist (tested against a known
-        # moderate-only advisory). This repo's actual bun.lock currently
-        # has ~41 real high/critical findings across various examples/*
-        # (vite, next, astro, nuxt, remix, tar, ...) — they were never
-        # reachable before because `npm install` always died first. That
-        # is this check correctly failing closed on real, pre-existing
-        # supply-chain risk, not a bug in this workflow; remediating those
-        # findings is separate follow-up work, not a CI-gate-mechanics fix.
-        run: bun audit --audit-level=high
+        # moderate-only advisory).
+        #
+        # Remediation status (DEV-1218, 2026-07-28): the ~41 pre-existing
+        # high/critical findings were fixed by a full lockfile re-resolve
+        # plus root-level overrides (tar, sharp, postcss,
+        # @vanilla-extract/integration — see package.json "overrides").
+        # The --ignore list below is the documented remainder; each entry
+        # has a removal condition:
+        #
+        #   GHSA-mh99-v99m-4gvg (brace-expansion, DoS): patched only in
+        #     5.0.8, which is inside the bunfig minimumReleaseAge window
+        #     until 2026-07-30; the 1.x/2.x copies under older minimatch
+        #     parents (eslint, api-extractor, @remix-run/dev) have no
+        #     patched release at all — they clear only as those parents
+        #     move to minimatch >=10.2.6. Dev-time tooling, DoS-only
+        #     (CWE-400). Revisit after 2026-07-30 lock refresh.
+        #
+        #   GHSA-rxv8-25v2-qmq8 (turbo-stream via @remix-run 2.x): fix is
+        #     turbo-stream 3.x, which remix 2 cannot take (breaking wire
+        #     format; examples/remix has v3_singleFetch enabled). Demo app
+        #     only, never deployed. Clears when the remix example migrates
+        #     to react-router 7 (follow-up).
+        #
+        #   GHSA-6gpp-xcg3-4w24 / GHSA-89xv-2m56-2m9x /
+        #   GHSA-m99w-x7hq-7vfj / GHSA-p9j2-gv94-2wf4 (next 16.2.10):
+        #     patched in 16.2.11 (published 2026-07-21), which is inside
+        #     the minimumReleaseAge window until 2026-07-28T16:00Z. Demo
+        #     apps only. Refresh bun.lock and DROP these four ignores
+        #     after 2026-07-28 — do not weaken minimumReleaseAge for this.
+        run: |
+          bun audit --audit-level=high \
+            --ignore=GHSA-mh99-v99m-4gvg \
+            --ignore=GHSA-rxv8-25v2-qmq8 \
+            --ignore=GHSA-6gpp-xcg3-4w24 \
+            --ignore=GHSA-89xv-2m56-2m9x \
+            --ignore=GHSA-m99w-x7hq-7vfj \
+            --ignore=GHSA-p9j2-gv94-2wf4
 
   licenses:
     name: License allowlist
