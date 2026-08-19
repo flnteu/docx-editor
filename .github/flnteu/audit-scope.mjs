@@ -2,7 +2,7 @@
 // published-package dependency closure (DEV-1218).
 //
 // Why: `bun audit` has no scope flag — it audits every package resolved in
-// bun.lock, including the 11 upstream examples/* demo apps (next, nuxt,
+// bun.lock, including the 10 upstream examples/* demo apps (next, nuxt,
 // remix, astro, ...). Nothing from those demos is built, published, or
 // served to FluentaOne (the reproducible-build job builds packages/* only),
 // yet historically they contributed nearly all of the audit findings. This
@@ -10,12 +10,15 @@
 // noise non-blocking.
 //
 // Scope = the transitive dependency closure, per the committed bun.lock, of:
-//   - every packages/* workspace (dependencies + devDependencies +
-//     peerDependencies — devDeps included on purpose: the build toolchain
-//     that produces the published artifacts is supply-chain surface), and
+//   - every PUBLISHED packages/* workspace, i.e. one whose package.json is
+//     not `private: true` (dependencies + devDependencies + peerDependencies
+//     — devDeps included on purpose: the build toolchain that produces the
+//     published artifacts is supply-chain surface), and
 //   - the root workspace's devDependencies (shared build/release tooling:
 //     tsup, typescript, eslint, changesets, ...).
-// examples/* workspaces are excluded — that is the point.
+// examples/* workspaces are excluded — that is the point — and so are
+// private packages/* workspaces, for the same reason and with the same
+// caveats; see the seed section below (DEV-2291).
 //
 // The graph walk is name-level and therefore conservative: if ANY resolved
 // copy of a name is reachable, every advisory for that name stays blocking.
@@ -27,6 +30,7 @@
 // Exit 1 iff an in-scope high/critical advisory is not on the ignore list.
 
 import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 
 const args = process.argv.slice(2);
 const ignores = new Set(
@@ -58,14 +62,60 @@ for (const entry of Object.values(lock.packages ?? {})) {
   edges.set(realName, set);
 }
 
-// --- Seed: packages/* workspaces + root build tooling ----------------------
+// --- Seed: PUBLISHED packages/* workspaces + root build tooling -------------
+//
+// "published" is read from each workspace's own package.json `private` flag,
+// not from a hand-maintained list here — a list would silently rot the next
+// time upstream adds a package (DEV-2291).
+//
+// Why the flag matters (measured on upstream 2.5.0): `packages/nuxt` and
+// `packages/vue` are `private: true`. They are WIP adapters that are never
+// published to npm and are deliberately excluded from the repo's own
+// `build:packages` script — the very script the reproducible-build job runs.
+// But `packages/nuxt` devDepends on the whole Nuxt framework, which dragged
+// 17 high/critical advisories into what this script calls the
+// "published-package closure", including ALL THREE criticals
+// (@nuxt/devtools RPC RCE, shell-quote, node-tar). None of it can reach a
+// FluentaOne artifact: it is not built, not published, and not installed by
+// any consumer of this fork.
+//
+// Blocking the vendor gate on a dev-only framework inside an unpublished WIP
+// workspace is the "gate blocks on risk that never ships" failure this
+// script exists to fix — the examples/* case, one directory over. Scoping to
+// the packages that are actually published makes the gate's name true.
+//
+// This NARROWS the scope, so it is a deliberate weakening in exchange for a
+// gate that people act on. Two things keep it honest:
+//   - devDependencies of published packages stay in scope (unchanged): the
+//     toolchain that produces a published artifact is supply-chain surface.
+//   - the scope is asserted, not assumed —
+//     `.github/flnteu/audit-scope.test.mjs` fails if a private workspace
+//     stops being excluded, if a published one stops being included, or if
+//     the script stops failing on an in-scope high (the positive control).
 const seeds = new Set();
 const workspaceNames = new Set();
+const skippedPrivate = [];
 for (const [wsPath, ws] of Object.entries(lock.workspaces ?? {})) {
   if (ws.name) workspaceNames.add(ws.name);
   if (wsPath !== '' && !wsPath.startsWith('packages/')) continue; // drop examples/*
+  if (wsPath !== '' && isPrivateWorkspace(wsPath)) {
+    skippedPrivate.push(wsPath);
+    continue; // drop private (never-published) packages/* workspaces
+  }
   for (const key of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
     for (const dep of Object.keys(ws[key] ?? {})) seeds.add(dep);
+  }
+}
+
+// Reads the workspace's package.json relative to the lockfile's directory, so
+// the script works from any cwd. A workspace whose manifest cannot be read is
+// treated as PUBLISHED (fail closed: keep it in scope).
+function isPrivateWorkspace(wsPath) {
+  try {
+    const manifest = join(dirname(resolve(lockPath)), wsPath, 'package.json');
+    return JSON.parse(readFileSync(manifest, 'utf8')).private === true;
+  } catch {
+    return false;
   }
 }
 
@@ -96,10 +146,15 @@ for (const [pkg, advisories] of Object.entries(audit)) {
 }
 
 console.log(`published-package closure: ${inScope.size} packages (of ${edges.size} in bun.lock)`);
+console.log(
+  skippedPrivate.length
+    ? `excluded, private:true so never published: ${skippedPrivate.join(', ')}`
+    : 'excluded, private:true so never published: (none)',
+);
 for (const [label, list] of [
   ['BLOCKING (in scope)', rows.blocking],
   ['ignored (in scope, on the documented ignore list)', rows.ignored],
-  ['informational (examples/* only, not shipped)', rows.outOfScope],
+  ['informational (examples/* + private workspaces, not shipped)', rows.outOfScope],
 ]) {
   console.log(`\n${label}: ${list.length}`);
   for (const r of list) console.log(`  ${r}`);

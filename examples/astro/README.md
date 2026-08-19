@@ -1,12 +1,12 @@
 # Astro example
 
-`@eigenpal/docx-editor-react` as an Astro island. Astro ships zero JS by
+`@docx-editor.dev/react` as an Astro island. Astro ships zero JS by
 default. The editor is interactive and browser-only, so it loads with the
 `client:only` directive, which skips SSR for that component entirely.
 
 ## Run it
 
-This example resolves the `@eigenpal/*` packages from their built output, so
+This example resolves the `@docx-editor.dev/*` packages from their built output, so
 build the workspace packages once first. From the repo root:
 
 ```bash
@@ -43,18 +43,11 @@ browser only. The page shell, fonts, and styles are still static HTML.
 ## Use it in your own Astro app
 
 ```bash
-npm install @eigenpal/docx-editor-react @eigenpal/docx-editor-core
+npm install @docx-editor.dev/react @docx-editor.dev/core
 npx astro add react
 ```
 
-Always mount the editor with `client:only="react"`. Load the Material
-Symbols font in the page `<head>`:
-
-```html
-<link
-  rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
-/>
-```
+Always mount the editor with `client:only="react"`. Toolbar icons are
+bundled as inline SVG, so there is no icon font to load.
 
 Docs: https://www.docx-editor.dev/docs/1.x/react

@@ -27,6 +27,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runApiExtractor } from './lib/api-extractor-runner.mjs';
 import { buildSourceIndex } from './lib/source-index.mjs';
+import { matchHeadDocBlock } from './lib/head-doc-block.mjs';
 import { transformApiPackageJson } from './lib/docs-model.mjs';
 import { PACKAGES, buildHintFor, reportDirFor } from './lib/packages.mjs';
 
@@ -60,12 +61,13 @@ function entriesFromExports(packageRoot, packageName, exportsMap) {
   // Instead of parsing tsup configs we use a robust fallback: scan all
   // `**/index.ts` and same-named `.ts` files under `src/`, pick the one
   // whose head doc-block names this exact subpath (e.g. matches the
-  // string `@eigenpal/docx-editor-react/dialogs` in the comment).
+  // string `@docx-editor.dev/react/dialogs` in the comment).
   const subpathSrcIndex = buildSubpathSrcIndex(packageRoot, packageName);
 
   const entries = [];
   for (const [key, value] of Object.entries(exportsMap)) {
     if (key === './package.json') continue;
+    if (key.startsWith('./internal/')) continue;
     if (typeof value !== 'object' || value === null) continue;
     if (typeof value.types !== 'string') continue;
     const slug = key === '.' ? 'index' : key.replace(/^\.\//, '').replace(/\//g, '-');
@@ -102,7 +104,7 @@ function buildSubpathSrcIndex(packageRoot, packageName) {
   const headerRx = new RegExp(`\\*\\s+(${escapeRegex(packageName)}(?:\\/[\\w/-]+)?)`);
   walkTs(srcRoot, (filePath) => {
     const content = fs.readFileSync(filePath, 'utf8');
-    const block = /^\s*\/\*\*([\s\S]*?)\*\//.exec(content);
+    const block = matchHeadDocBlock(content);
     if (!block) return;
     if (!block[0].includes('@packageDocumentation')) return;
     const header = headerRx.exec(block[0]);
@@ -133,13 +135,19 @@ function walkTs(dir, fn) {
 function readEntryDocBlock(srcPath) {
   if (!srcPath || !fs.existsSync(srcPath)) return '';
   const content = fs.readFileSync(srcPath, 'utf8');
-  const m = /^\s*\/\*\*([\s\S]*?)\*\//.exec(content);
+  const m = matchHeadDocBlock(content);
   if (!m) return '';
   if (!m[0].includes('@packageDocumentation')) return '';
   return m[0];
 }
 
 function processPackage(pkg) {
+  // A disconnected package has no build to read; `api-extractor.mjs` skips it the same way.
+  // Skipped LOUDLY so the exemption stays visible rather than quietly shrinking the docs.
+  if (pkg.disconnected) {
+    console.warn(`  SKIPPED ${pkg.name}: ${pkg.disconnected}`);
+    return false;
+  }
   const pkgRoot = path.join(repoRoot, pkg.root);
   const pkgJson = readPackageJson(pkgRoot);
   const apiModelDir = path.join(pkgRoot, 'temp', 'api-model');
@@ -219,15 +227,14 @@ function processPackage(pkg) {
   );
 
   console.log(`  ${pkg.name}: ${written} subpath docs written`);
+  return true;
 }
 
 function main() {
   console.log('Building docs JSON...');
   fs.mkdirSync(docsJsonDir, { recursive: true });
 
-  for (const pkg of PACKAGES) {
-    processPackage(pkg);
-  }
+  const documented = PACKAGES.filter((pkg) => processPackage(pkg));
 
   // Top-level packages index: lists every package + its subpaths-index path.
   // Lets a docs site fetch one root JSON, then drill into each package.
@@ -236,7 +243,7 @@ function main() {
   const root = {
     _schemaVersion: 1,
     github: GITHUB,
-    packages: PACKAGES.map((p) => ({
+    packages: documented.map((p) => ({
       name: p.name,
       pkgSlug: p.pkgSlug,
       indexPath: path.posix.join(p.pkgSlug, 'index.subpaths.json'),

@@ -13,7 +13,6 @@
 
 import React from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import type { Table } from '@eigenpal/docx-editor-core/types/document';
 import { MaterialSymbol } from './MaterialSymbol';
 import { useTranslation } from '../../i18n';
 
@@ -110,11 +109,11 @@ export interface TableSelection {
 }
 
 /**
- * Context for table operations
+ * Context for table operations. Derivable from the engine's selected-table
+ * summary (`Editor.getSelectedTable()`); structure edits themselves go through
+ * `Editor.exec` table commands, so no table content model appears here.
  */
 export interface TableContext {
-  /** The table being edited */
-  table: Table;
   /** Current selection within the table */
   selection: TableSelection;
   /** Whether multiple cells are selected (for merge) */
@@ -125,13 +124,6 @@ export interface TableContext {
   rowCount: number;
   /** Total number of columns */
   columnCount: number;
-}
-
-export interface TableSplitConfig {
-  minRows: number;
-  minCols: number;
-  initialRows: number;
-  initialCols: number;
 }
 
 /**
@@ -221,7 +213,11 @@ export function SplitCellIcon(): React.ReactElement {
 }
 
 export function DeleteTableIcon(): React.ReactElement {
-  return <MaterialSymbol name="delete" size={ICON_SIZE} className="text-red-600" />;
+  return <MaterialSymbol name="delete" size={ICON_SIZE} className="text-destructive" />;
+}
+
+export function SelectTableIcon(): React.ReactElement {
+  return <MaterialSymbol name="select_all" size={ICON_SIZE} />;
 }
 
 // ============================================================================
@@ -246,7 +242,7 @@ const TOOLBAR_STYLES: Record<string, CSSProperties> = {
   containerFloating: {
     position: 'absolute',
     zIndex: 1000,
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
+    boxShadow: '0 2px 8px var(--doc-shadow)',
   },
   group: {
     display: 'flex',
@@ -509,6 +505,15 @@ export function TableToolbar({
           compact={compact}
         />
         <TableToolbarButton
+          action="selectTable"
+          label={t('table.selectTable')}
+          icon={<SelectTableIcon />}
+          disabled={disabled}
+          onClick={() => handleAction('selectTable')}
+          showLabel={showLabels}
+          compact={compact}
+        />
+        <TableToolbarButton
           action="deleteTable"
           label={t('table.deleteTable')}
           icon={<DeleteTableIcon />}
@@ -526,26 +531,13 @@ export function TableToolbar({
 }
 
 // ============================================================================
-// TABLE OPERATIONS (re-exported from TableToolbar/operations.ts)
+// TABLE SELECTION HELPERS (re-exported from TableToolbar/operations.ts)
 // ============================================================================
 
 export {
-  createTableContext,
-  getColumnCount,
-  getCellAt,
   isMultiCellSelection,
   getSelectionBounds,
   isCellInSelection,
-  createEmptyRow,
-  createEmptyCell,
-  getTableSplitCellDialogConfig,
-  splitTableCell,
-  addRow,
-  deleteRow,
-  addColumn,
-  deleteColumn,
-  mergeCells,
-  splitCell,
   getActionLabel,
   isDeleteAction,
   handleTableShortcut,

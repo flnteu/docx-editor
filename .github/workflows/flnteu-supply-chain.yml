@@ -10,11 +10,16 @@ name: FluentaOne supply-chain gate
 # to the fork's main branch + on every tag matching `v*` that we
 # intend to publish to the FluentaOne private registry.
 #
-# Pulling in a new upstream version:
-#   1. Sync the fork's main from upstream (`gh repo sync flnteu/docx-editor`).
-#   2. Tag the synced commit `v<upstream-version>-flnteu` to trigger this gate.
-#   3. The gate must be green before the tag becomes the FluentaOne
-#      private-registry source.
+# Pulling in a new upstream version — `gh repo sync` DOES NOT WORK here, and
+# the full procedure lives in FLNTEU-README.md ("Syncing to a new upstream
+# version"). In one line: upstream re-initialized its git history on
+# 2026-07-20, so the fork and upstream share no commit at all
+# (`git merge-base origin/main upstream/main` exits 1). A sync is therefore a
+# two-parent merge that takes upstream's tree wholesale and re-applies the
+# flnteu overlay, delivered as a branch + PR, with the candidate tag
+# `v<upstream-version>-flnteu` pushed on the branch tip to trigger this gate.
+# The gate must be green before that tag becomes the FluentaOne
+# private-registry source.
 #
 # Failure semantics — each check fails closed:
 #   - npm audit at the `high` band → block.
@@ -22,7 +27,7 @@ name: FluentaOne supply-chain gate
 #   - Build / typecheck failure → block.
 #
 # Toolchain (DEV-1218): all three jobs install via `bun install
-# --frozen-lockfile`, not npm. This is a bun-native monorepo — 11
+# --frozen-lockfile`, not npm. This is a bun-native monorepo — 10
 # `examples/*` workspaces use the `workspace:*` protocol, which npm has
 # never supported. That's not a scoping problem you can flag your way out
 # of: `npm install --workspaces=false` still throws EUNSUPPORTEDPROTOCOL,
@@ -53,9 +58,12 @@ permissions:
   contents: read
 
 env:
-  # Verified 2026-07-27 (DEV-1218): installs cleanly against this repo's
-  # bun.lock and passes `bun run -F "*" typecheck`. See the toolchain note
-  # above before bumping.
+  # Re-verified 2026-08-19 (DEV-2291) against upstream 2.5.0's lockfile:
+  # `bun install --frozen-lockfile` is clean, `bun run --filter './packages/*'
+  # typecheck` and `bun run build:packages` both pass, and `bun run test` is
+  # 7214 pass / 0 fail. Upstream's own CI pins `bun-version: latest`; this
+  # gate stays on an exact pin on purpose, so a bun release cannot change what
+  # the vendor gate measured. See the toolchain note above before bumping.
   BUN_VERSION: "1.3.14"
 
 jobs:
@@ -76,7 +84,7 @@ jobs:
       - name: bun audit (published-package closure)
         # `bun audit` (bun >=1.2) reads bun.lock directly — no
         # node_modules required — but it has no scope flag: it audits every
-        # resolved package, including the 11 upstream examples/* demo apps
+        # resolved package, including the 10 upstream examples/* demo apps
         # (next, nuxt, remix, astro, ...) that this fork never builds,
         # publishes, or serves (the reproducible-build job below builds
         # packages/* only). Historically those demos produced nearly all of
@@ -91,24 +99,45 @@ jobs:
         # findings are printed as informational. See the script header for
         # the mechanics and the conservative name-level graph walk.
         #
-        # Remediation status (DEV-1218, 2026-07-28): the ~41 pre-existing
-        # high/critical findings were fixed by a full lockfile re-resolve
-        # plus root-level overrides (tar, sharp, postcss,
-        # @vanilla-extract/integration — see package.json "overrides").
-        # The documented ignore list is down to one entry:
+        # Remediation status (DEV-2291, 2026-08-19, upstream 2.5.0):
+        # THE IGNORE LIST IS NOW EMPTY. Do not add to it without recording
+        # the removal condition, as the entries below once did.
         #
-        #   GHSA-mh99-v99m-4gvg (brace-expansion, DoS, CWE-400): reaches
-        #     the closure through minimatch chains under eslint,
-        #     @microsoft/api-extractor and vue-tsc. Patched only in 5.0.8,
-        #     which is inside the bunfig minimumReleaseAge window until
-        #     2026-07-30 — and the 1.x/2.x copies under older minimatch
-        #     parents have no patched release at all; they clear only as
-        #     those parents move to minimatch >=10.2.6. Dev-time tooling,
-        #     DoS-only. Revisit after a lock refresh past 2026-07-30.
+        # Upstream 2.5.0 raised 38 in-scope high/critical findings. They were
+        # cleared two ways, and the split matters:
+        #
+        #  - 21 by seven root-level overrides (see package.json "overrides":
+        #    brace-expansion, fast-uri, js-yaml, nanoid, postcss, vite, ws).
+        #    Every one had a patched release published well before the bunfig
+        #    minimumReleaseAge window, so unlike DEV-1218 nothing had to be
+        #    parked. The overrides collapse some transitive copies across a
+        #    major line (brace-expansion 1.x/2.x -> 5.0.9, js-yaml 3.x ->
+        #    4.3.1, ws 7.x -> 8.x, vite 5.x/7.x -> 8.1.5), which is why they
+        #    are only defensible alongside a green `bun run test`.
+        #
+        #  - 17 by correcting the SCOPE, not the tree: they were reachable
+        #    only through `packages/nuxt`, a `private: true` WIP workspace
+        #    that is never published and is excluded from `build:packages`.
+        #    That set contained all three criticals. See the long comment in
+        #    audit-scope.mjs; the exclusion is asserted by
+        #    .github/flnteu/audit-scope.test.mjs, run as a step below.
+        #
+        # NOT a full `bun update`: re-resolving the whole lockfile was
+        # measured first and moved the count 39 -> 38 while diverging 994
+        # lines from upstream's lock, so the fork keeps upstream's lockfile
+        # plus the seven documented overrides.
         run: |
           bun audit --json > /tmp/bun-audit.json || true
-          bun .github/flnteu/audit-scope.mjs /tmp/bun-audit.json bun.lock \
-            --ignore=GHSA-mh99-v99m-4gvg
+          bun .github/flnteu/audit-scope.mjs /tmp/bun-audit.json bun.lock
+
+      - name: audit-scope self-test (positive control)
+        # The scoping filter is the only thing standing between "this gate is
+        # strict" and "this gate cannot fail". Its own tests assert that an
+        # in-scope high still exits 1, that the private-workspace exclusion
+        # excludes exactly the private workspaces, and that an unreadable
+        # manifest fails closed. Run them in CI, next to the filter they
+        # guard, so a well-meaning scope tweak cannot quietly hollow the gate.
+        run: bun .github/flnteu/audit-scope.test.mjs
 
   licenses:
     name: License allowlist
@@ -144,12 +173,31 @@ jobs:
           # tooling deps), all MIT/Apache-2.0/dual-licensed, still gated by
           # the exact same allowlist below.
           #
-          # --onlyAllow and --excludePackages are byte-for-byte unchanged
-          # from the original policy — not widened.
+          # --onlyAllow is byte-for-byte unchanged from the original policy —
+          # not widened.
+          #
+          # --excludePackages, renamed for 2.x (DEV-2291): the two names it
+          # carried, @eigenpal/docx-editor-{core,react}, no longer exist
+          # anywhere — upstream renamed the packages to @docx-editor.dev/* at
+          # 2.0, so the flag had quietly become a no-op that excluded nothing.
+          # The list is now every FIRST-PARTY package this repo publishes.
+          # These are not third-party dependencies and their licensing is a
+          # product decision, not a supply-chain allowlist question: two of
+          # them (pro, editor-api) ship under the source-available
+          # LicenseRef-EigenPal-Pro-Evaluation-1.0, and packages/fonts is
+          # "Apache-2.0 AND OFL-1.1" for the font binaries it carries. None of
+          # those are on the allowlist, and none should be — an allowlist of
+          # permissive licenses is the wrong instrument for the licence we
+          # ourselves vendored under. Measured today the scan resolves 37
+          # root-level tooling packages and reaches none of these, so this
+          # flag is defence for when that scope widens, not a live exclusion.
+          #
+          # The scan really can fail: with Apache-2.0 removed from
+          # --onlyAllow it exits 1 on @playwright/test (verified 2026-08-19).
           npx --yes license-checker-rseidelsohn \
             --excludePrivatePackages \
             --onlyAllow "MIT;Apache-2.0;BSD-3-Clause;BSD-2-Clause;ISC;0BSD;CC0-1.0;CC-BY-4.0;Unlicense" \
-            --excludePackages "@eigenpal/docx-editor-react;@eigenpal/docx-editor-core" \
+            --excludePackages "@docx-editor.dev/core;@docx-editor.dev/react;@docx-editor.dev/i18n;@docx-editor.dev/fonts;@docx-editor.dev/editor-api;@docx-editor.dev/pro" \
             --summary
 
   reproducible-build:
@@ -164,7 +212,7 @@ jobs:
         run: bun install --frozen-lockfile
       # Scoped to packages/* — the published set that becomes the FluentaOne
       # private-registry source (see the header). The previous `-F "*"` also
-      # built the 11 examples/* demo apps, so the gate blocked on upstream demo
+      # built the 10 examples/* demo apps, so the gate blocked on upstream demo
       # breakage that never ships: examples/nextjs currently fails `next build`
       # with "Cannot find module or type declarations for side-effect import of
       # './globals.css'". That is an upstream demo bug, not a supply-chain risk

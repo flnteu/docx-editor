@@ -1,109 +1,68 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'tsup';
 
-export default defineConfig([
-  {
-    entry: {
-      core: 'src/core.ts',
-      headless: 'src/headless.ts',
-      'core-plugins': 'src/core-plugins/index.ts',
-      mcp: 'src/mcp/index.ts',
-      // Subpath entries — stable public surface at directory-boundary
-      // granularity, so framework adapters outside packages/{react,vue}
-      // can consume internals without reaching into src/.
-      'prosemirror/index': 'src/prosemirror/index.ts',
-      'prosemirror/extensions/index': 'src/prosemirror/extensions/index.ts',
-      'prosemirror/conversion/index': 'src/prosemirror/conversion/index.ts',
-      'prosemirror/commands/index': 'src/prosemirror/commands/index.ts',
-      'prosemirror/plugins/index': 'src/prosemirror/plugins/index.ts',
-      'prosemirror/utils/ClickPositionResolver': 'src/prosemirror/utils/ClickPositionResolver.ts',
-      'prosemirror/utils/extractTrackedChanges': 'src/prosemirror/utils/extractTrackedChanges.ts',
-      'prosemirror/utils/LayoutSelectionGate': 'src/prosemirror/utils/LayoutSelectionGate.ts',
-      'prosemirror/utils/PointerEventHandler': 'src/prosemirror/utils/PointerEventHandler.ts',
-      'prosemirror/utils/visualLineNavigation': 'src/prosemirror/utils/visualLineNavigation.ts',
-      'prosemirror/extensions/nodes/TableExtension':
-        'src/prosemirror/extensions/nodes/TableExtension/index.ts',
-      'prosemirror/template/prosemirror-plugin': 'src/prosemirror/template/prosemirror-plugin.ts',
-      'docx/index': 'src/docx/index.ts',
-      'docx/wrapTypes': 'src/docx/wrapTypes.ts',
-      'docx/serializer/index': 'src/docx/serializer/index.ts',
-      'agent/index': 'src/agent/index.ts',
-      'utils/index': 'src/utils/index.ts',
-      'utils/cardStyles': 'src/utils/cardStyles.ts',
-      'types/document': 'src/types/document.ts',
-      'types/content': 'src/types/content.ts',
-      'types/agentApi': 'src/types/agentApi.ts',
-      'layout-engine/index': 'src/layout-engine/index.ts',
-      'layout-engine/types': 'src/layout-engine/types.ts',
-      'layout-painter/index': 'src/layout-painter/index.ts',
-      'layout-painter/renderPage': 'src/layout-painter/renderPage.ts',
-      'layout-bridge/index': 'src/layout-bridge/index.ts',
-      'layout-bridge/clickToPositionDom': 'src/layout-bridge/clickToPositionDom.ts',
-      'layout-bridge/measuring/index': 'src/layout-bridge/measuring/index.ts',
-      'layout-bridge/tableInsertHover': 'src/layout-bridge/tableInsertHover.ts',
-      'layout-bridge/toFlowBlocks': 'src/layout-bridge/toFlowBlocks.ts',
-      'plugin-api/index': 'src/plugin-api/index.ts',
-      'plugin-api/RenderedDomContext': 'src/plugin-api/RenderedDomContext.ts',
-      'plugin-api/resolveItemPositions': 'src/plugin-api/resolveItemPositions.ts',
-      'plugin-api/types': 'src/plugin-api/types.ts',
-      'docx/parser': 'src/docx/parser.ts',
-      'docx/rezip': 'src/docx/rezip.ts',
-      'utils/headingCollector': 'src/utils/headingCollector.ts',
-      'utils/highlightColors': 'src/utils/highlightColors.ts',
-      'utils/textSelection': 'src/utils/textSelection.ts',
-      'utils/comments': 'src/utils/comments.ts',
-      'utils/findReplace': 'src/utils/findReplace.ts',
-      'utils/findVerticalScrollParent': 'src/utils/findVerticalScrollParent.ts',
-      'utils/fontOptions': 'src/utils/fontOptions.ts',
-      'utils/listState': 'src/utils/listState.ts',
-      'utils/reportIssue': 'src/utils/reportIssue.ts',
-      'utils/sidebarConstants': 'src/utils/sidebarConstants.ts',
-      'utils/units': 'src/utils/units.ts',
-      'managers/AutoSaveManager': 'src/managers/AutoSaveManager.ts',
-      'managers/TableSelectionManager': 'src/managers/TableSelectionManager.ts',
-      'managers/types': 'src/managers/types.ts',
-      'prosemirror/commands/formatting': 'src/prosemirror/commands/formatting.ts',
-      'prosemirror/commands/pageBreak': 'src/prosemirror/commands/pageBreak.ts',
-      'prosemirror/commands/paragraph': 'src/prosemirror/commands/paragraph.ts',
-      'prosemirror/conversion/fromProseDoc': 'src/prosemirror/conversion/fromProseDoc.ts',
-      'prosemirror/plugins/selectionTracker': 'src/prosemirror/plugins/selectionTracker.ts',
-      'prosemirror/schema/index': 'src/prosemirror/schema/index.ts',
-      'prosemirror/styles/index': 'src/prosemirror/styles/index.ts',
-    },
-    format: ['cjs', 'esm'],
-    dts: true,
-    splitting: true,
-    sourcemap: false,
-    clean: true,
-    treeshake: true,
-    minify: true,
-    external: [
-      'prosemirror-commands',
-      'prosemirror-dropcursor',
-      'prosemirror-history',
-      'prosemirror-keymap',
-      'prosemirror-model',
-      'prosemirror-state',
-      'prosemirror-tables',
-      'prosemirror-transform',
-      'prosemirror-view',
-    ],
-    injectStyle: false,
+const here = dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig({
+  // One entry per published subpath. Keep this in step with `exports` in
+  // package.json: a subpath with no entry here resolves to a missing file.
+  entry: {
+    index: 'src/index.ts',
+    automation: 'src/automation/index.ts',
+    binding: 'src/binding/index.ts',
+    'contracts/editor': 'src/contracts/editor.ts',
+    'contracts/document': 'src/contracts/document.ts',
+    'contracts/interaction': 'src/contracts/interaction.ts',
+    'contracts/modules': 'src/contracts/modules.ts',
+    'contracts/types': 'src/contracts/types-barrel.ts',
+    layout: 'src/layout/index.ts',
+    output: 'src/output/index.ts',
+    store: 'src/store/index.ts',
+    editor: 'src/editor/index.ts',
   },
-  // CLI build (with shebang) - bundles all deps for standalone use
-  {
-    entry: {
-      'mcp-cli': 'src/mcp/cli.ts',
-    },
-    format: ['esm'],
-    dts: true,
-    splitting: false,
-    sourcemap: false,
-    clean: false,
-    treeshake: true,
-    minify: true,
-    injectStyle: false,
-    banner: {
-      js: '#!/usr/bin/env node',
-    },
+  // Same reason the adapter sets it: tsup defaults to `node`, which resolves
+  // bundled deps through their `node` export condition, and fflate's node build
+  // runs `createRequire` at module top level and throws in a browser.
+  platform: 'browser',
+  format: ['cjs', 'esm'],
+  dts: true,
+  // Many entries share the engine's internals. Splitting emits them once into
+  // shared chunks instead of copying them into all fourteen bundles.
+  splitting: true,
+  sourcemap: false,
+  clean: true,
+  treeshake: true,
+  minify: true,
+  // `scripts/generate-third-party-notices.mjs` reads `dist/metafile-*.json` to learn
+  // which third-party packages esbuild actually inlined into the shipped bundles, and
+  // emits the attribution file for exactly those. This package is the one that inlines
+  // the most of them: fast-xml-parser, fflate and the prosemirror-* family all end up as
+  // source inside `dist/`.
+  metafile: true,
+  external: ['harfbuzzjs', 'emf-converter', 'utif2'],
+  // The engine's own files import it by package name ('@docx-editor.dev/core/store'
+  // and friends), which resolved through the export map back when that map pointed
+  // at src. Now that it points at dist, the build has to be told where source is,
+  // or it chases a dist that does not exist yet.
+  //
+  // tsconfig.json carries the same table as `paths`, for the declaration pass and
+  // for every consumer that compiles core's sources. It has no comment saying so
+  // because core-lane-graph.test.ts reads that file with a plain JSON.parse.
+  esbuildOptions(options) {
+    options.alias = {
+      '@docx-editor.dev/core': resolve(here, 'src/index.ts'),
+      '@docx-editor.dev/core/automation': resolve(here, 'src/automation/index.ts'),
+      '@docx-editor.dev/core/binding': resolve(here, 'src/binding/index.ts'),
+      '@docx-editor.dev/core/contracts/editor': resolve(here, 'src/contracts/editor.ts'),
+      '@docx-editor.dev/core/contracts/document': resolve(here, 'src/contracts/document.ts'),
+      '@docx-editor.dev/core/contracts/interaction': resolve(here, 'src/contracts/interaction.ts'),
+      '@docx-editor.dev/core/contracts/modules': resolve(here, 'src/contracts/modules.ts'),
+      '@docx-editor.dev/core/contracts/types': resolve(here, 'src/contracts/types-barrel.ts'),
+      '@docx-editor.dev/core/layout': resolve(here, 'src/layout/index.ts'),
+      '@docx-editor.dev/core/output': resolve(here, 'src/output/index.ts'),
+      '@docx-editor.dev/core/store': resolve(here, 'src/store/index.ts'),
+      '@docx-editor.dev/core/editor': resolve(here, 'src/editor/index.ts'),
+    };
   },
-]);
+});

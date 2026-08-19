@@ -1,15 +1,14 @@
 name: Release
 
 # Two triggers, single job:
-# 1. Every push to main (1.x) or 0.x (maintenance) → if there are pending
-#    changesets in `.changeset/`, open or update a "chore: release" PR with the
-#    version bumps and CHANGELOG entries applied. The PR sits there until a
-#    maintainer merges it.
+# 1. Every push to main → if there are pending changesets in `.changeset/`,
+#    open or update a "chore: release" PR with the version bumps and CHANGELOG
+#    entries applied. The PR sits there until a maintainer merges it.
 # 2. When that PR is merged → the same job runs again, sees no pending
 #    changesets (they were drained by `changeset version`), and instead
 #    publishes the new versions to npm.
 #
-# The heavy gate (lint, format, typecheck, tests, build, Playwright, parity)
+# The heavy gate (lint, format, typecheck, tests, build, parity)
 # only guards the PUBLISH path (mode 2). On the PR-update path (mode 1) those
 # steps are skipped: `changeset version` just rewrites versions + CHANGELOGs,
 # needs no build, and the work is already validated by each contributing PR's
@@ -17,15 +16,11 @@ name: Release
 # next push to main supersedes them in the `release` concurrency group —
 # otherwise slow runs queue and get cancelled, leaving the release PR stale.
 #
-# Each branch maintains its own `.changeset/*.md` queue. 0.x and 1.x publish
-# distinct npm packages (the rename in 1.0 means no `latest` dist-tag
-# collision between branches) so no per-branch `--tag` handling is needed.
-#
 # Manual workflow_dispatch is kept for the rare case of triggering a publish
 # without a fresh push (e.g. recovering from a failed publish step).
 on:
   push:
-    branches: [main, 0.x]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -35,6 +30,10 @@ concurrency:
 jobs:
   release:
     name: Release
+    # Must be a GitHub-hosted runner: npm rejects provenance bundles from
+    # self-hosted runners (E422 "Unsupported GitHub Actions runner environment"),
+    # and Trusted Publishing always signs provenance. Blacksmith counts as
+    # self-hosted, so keep this job off it.
     runs-on: ubuntu-latest
     # Default job timeout is 6h; a hung step (e.g. an apt prompt) otherwise burns
     # a runner for hours. A healthy run finishes in well under 10 min.
@@ -45,7 +44,7 @@ jobs:
       id-token: write # OIDC for npm Trusted Publishing
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -114,7 +113,7 @@ jobs:
 
       - name: Run tests
         if: ${{ steps.pending.outputs.publishing == 'true' }}
-        run: bun test
+        run: bun run test
 
       - name: Build packages (publish reuses the dist/)
         if: ${{ steps.pending.outputs.publishing == 'true' }}
@@ -124,31 +123,38 @@ jobs:
           # core's 67 entries OOM under the default 1.5 GB heap.
           NODE_OPTIONS: --max-old-space-size=8192
 
-      # `--with-deps` shells out to apt-get; on the current ubuntu-latest image a
-      # post-install needrestart prompt can hang it indefinitely (observed
-      # burning ~6h until the run was cancelled). NEEDRESTART_MODE=a +
-      # noninteractive frontend suppress the prompt, and timeout-minutes turns
-      # any remaining hang into a fast failure instead of hours of idle runner.
-      - name: Install Playwright browsers for parity gate
-        if: ${{ steps.pending.outputs.publishing == 'true' }}
-        timeout-minutes: 10
-        run: npx playwright install --with-deps chromium
-        env:
-          DEBIAN_FRONTEND: noninteractive
-          NEEDRESTART_MODE: a
-
       - name: Parity prepublish gate
         if: ${{ steps.pending.outputs.publishing == 'true' }}
         run: bun run parity:prepublish
 
+      # Emit `packages/<pkg>/THIRD_PARTY_NOTICES.md` from the build that is about
+      # to be packed. The published bundles inline third-party source (the
+      # private core package drags fast-xml-parser, fflate and prosemirror-* in
+      # with it), and MIT/Apache-2.0 both require the copyright and permission
+      # notice to travel with the copy — minified `dist/` carries neither.
+      #
+      # Must sit AFTER the last build step and BEFORE the changesets action:
+      # the generator reads `dist/metafile-*.json`, and the files it writes are
+      # gitignored, so they exist only for the duration of this job and are
+      # picked up by `changeset publish` through each package's `files` list.
+      # The step hard-fails on a bundled dependency with no license text, which
+      # aborts the job before anything reaches npm.
+      - name: Generate third-party notices
+        if: ${{ steps.pending.outputs.publishing == 'true' }}
+        run: bun run notices:generate
+
       # The single step that does both PR-management and publishing.
       # - If `.changeset/*.md` are pending: opens / updates a "chore: release X.Y.Z" PR
       #   that runs `version` (drains changesets, bumps versions, writes CHANGELOG).
+      #   `version-packages` also regenerates the Office.js conformance fixture:
+      #   `compat/generated/docxeditor.shape.json` stamps editor-api's version, and a
+      #   test asserts it equals a fresh regeneration — so a bump without this leaves
+      #   the release PR red on a file only the bump changed.
       # - If no pending changesets and current package.json versions aren't on npm yet:
       #   runs `publish` and creates per-package git tags.
       - name: Release PR or Publish
         id: changesets
-        uses: changesets/action@v1
+        uses: changesets/action@v1.9.0
         with:
           version: bun run version-packages
           publish: bunx changeset publish
@@ -158,7 +164,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
 
-      # changesets/action creates per-package tags (e.g. `@eigenpal/docx-editor-react@1.0.1`);
+      # changesets/action creates per-package tags (e.g. `@docx-editor.dev/react@1.0.1`);
       # also create a single `vX.Y.Z` umbrella tag for Renovate/Dependabot/Releases.
       # The fixed group keeps every 1.x package in lockstep, so the umbrella
       # version = the version of any published package. The `published` gate
@@ -173,6 +179,71 @@ jobs:
           git tag -a "v$version" -m "Release v$version"
           git push origin "v$version"
 
+      # Post-publish fan-out runs as the eigenpal-release-pal App rather than
+      # the default GITHUB_TOKEN, so it can comment on this repo's PRs and
+      # notify docx-editor.dev. (App permissions are managed in the org.)
+      # continue-on-error on all three post-publish steps: the release has
+      # already shipped to npm, so a transient failure here must NOT flip the
+      # run to failed, which would suppress the success Slack and fire the
+      # misleading "publish failed / partial state" alert keyed on
+      # no-pending-changesets.
+      - name: Mint release-pal App token
+        if: ${{ steps.changesets.outputs.published == 'true' && github.ref == 'refs/heads/main' }}
+        id: pal-token
+        continue-on-error: true
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ secrets.RELEASE_PAL_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PAL_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: docx-editor,docx-editor.dev
+
+      # Comment "🚀 Released in vX.Y.Z" on every PR that shipped in this release.
+      # The squash-merge subject GitHub writes ends in "(#N)" = the PR number;
+      # the previous umbrella tag bounds "what shipped", and chore: release
+      # commits are skipped so the release PR doesn't comment on itself.
+      - name: Comment release link on shipped PRs
+        if: ${{ steps.changesets.outputs.published == 'true' && github.ref == 'refs/heads/main' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.pal-token.outputs.token }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          version=$(jq -r '.[0].version' <<<"$PUBLISHED_PACKAGES")
+          # `|| true`: the default shell is `bash -eo pipefail`, so a grep
+          # no-match (first-ever release) or a SIGPIPE from head closing the
+          # pipe early would otherwise abort this step — which, via the implicit
+          # success() gate, would skip the landing-notify dispatch below.
+          prev=$(git tag --list 'v*' --sort=-v:refname | grep -vx "v$version" | head -n1 || true)
+          if [ -z "$prev" ]; then
+            echo "No previous v* tag found; skipping PR comments."
+            exit 0
+          fi
+          release_url="${{ github.server_url }}/${{ github.repository }}/releases/tag/v$version"
+          prs=$(git log --format='%s' "$prev..HEAD" \
+            | grep -vE '^chore: release' \
+            | grep -oE '\(#[0-9]+\)$' | tr -dc '0-9\n' | sort -u)
+          echo "Shipped PRs: ${prs:-none}"
+          for pr in $prs; do
+            gh pr comment "$pr" --repo "${{ github.repository }}" \
+              --body "🚀 Released in [v$version]($release_url)" \
+              || echo "Could not comment on #$pr (closed / cross-fork?); continuing."
+          done
+
+      # Tell the landing site a new version shipped. Its sync workflow opens an
+      # auto-merging PR that bumps the pinned editor deps to this version.
+      - name: Notify landing site of new release
+        if: ${{ steps.changesets.outputs.published == 'true' && github.ref == 'refs/heads/main' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ steps.pal-token.outputs.token }}
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.publishedPackages }}
+        run: |
+          version=$(jq -r '.[0].version' <<<"$PUBLISHED_PACKAGES")
+          gh api "repos/${{ github.repository_owner }}/docx-editor.dev/dispatches" \
+            -f event_type=upstream-release \
+            -f "client_payload[version]=$version"
+
       - name: Notify Slack — release succeeded
         if: ${{ steps.changesets.outputs.published == 'true' && env.SLACK_WEBHOOK_URL != '' }}
         env:
@@ -183,11 +254,11 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           # publishedPackages is JSON like:
-          # [{"name":"@eigenpal/docx-editor-react","version":"1.0.0"}, ...]
+          # [{"name":"@docx-editor.dev/react","version":"1.0.0"}, ...]
           version=$(echo "$PUBLISHED_PACKAGES" | jq -r '.[0].version')
           packages_md=$(echo "$PUBLISHED_PACKAGES" | jq -r '.[] | "• <https://www.npmjs.com/package/\(.name)/v/\(.version)|\(.name)@\(.version)>"')
           # changesets/action with a fixed group creates per-package tags (e.g.
-          # `@eigenpal/docx-editor-react@1.0.0`), not a single `vX.Y.Z`. URL-encode
+          # `@docx-editor.dev/react@1.0.0`), not a single `vX.Y.Z`. URL-encode
           # `@`/`/` so the link resolves on GitHub.
           release_tag=$(jq -rn --argjson pkgs "$PUBLISHED_PACKAGES" '$pkgs[0].name + "@" + $pkgs[0].version | @uri')
           release_url="${{ github.server_url }}/${{ github.repository }}/releases/tag/$release_tag"

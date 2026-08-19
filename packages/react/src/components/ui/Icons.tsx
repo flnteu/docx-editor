@@ -6,38 +6,9 @@
  */
 
 import type { CSSProperties } from 'react';
+import { SvgIcon, type IconProps } from './icon-base';
 
-export interface IconProps {
-  size?: number;
-  className?: string;
-  style?: CSSProperties;
-}
-
-const defaultSize = 20;
-
-// SVG wrapper for Material Symbols (viewBox 0 -960 960 960)
-function SvgIcon({
-  size = defaultSize,
-  className = '',
-  style,
-  children,
-}: IconProps & { children: React.ReactNode }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width={size}
-      height={size}
-      viewBox="0 -960 960 960"
-      fill="currentColor"
-      className={className}
-      style={{ display: 'inline-flex', flexShrink: 0, ...style }}
-      aria-hidden="true"
-    >
-      {children}
-    </svg>
-  );
-}
-
+export type { IconProps };
 // ============================================================================
 // TOOLBAR ICONS
 // ============================================================================
@@ -711,10 +682,34 @@ export function IconPageBreak(props: IconProps) {
   );
 }
 
+export function IconWatermark(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm0-80h640v-480H160v480Zm320-60q66 0 113-37t47-93q0-29-13-58t-34-55q-21-26-50-49t-50-31q-21 8-50 31t-50 49q-21 26-34 55t-13 58q0 56 47 93t140 37Z" />
+    </SvgIcon>
+  );
+}
+
 export function IconArrowBack(props: IconProps) {
   return (
     <SvgIcon {...props}>
       <path d="M313-440l224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconSearch(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z" />
+    </SvgIcon>
+  );
+}
+
+export function IconToc(props: IconProps) {
+  return (
+    <SvgIcon {...props}>
+      <path d="M120-240v-80h240v80H120Zm0-200v-80h480v80H120Zm0-200v-80h720v80H120Z" />
     </SvgIcon>
   );
 }
@@ -749,7 +744,7 @@ export function IconChatBubbleCheck(props: IconProps) {
   return (
     <SvgIcon {...props}>
       <path d="M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm126-240h594v-480H160v525l46-45Zm-46 0v-480 480Z" />
-      <path fill="#188038" d="m421-380 227-227-45-45-182 182-92-91-45 45 137 136Z" />
+      <path fill="var(--doc-success)" d="m421-380 227-227-45-45-182 182-92-91-45 45 137 136Z" />
     </SvgIcon>
   );
 }
@@ -874,6 +869,9 @@ const iconMap: Record<string, React.ComponentType<IconProps>> = {
   table_rows: IconTableRows,
   view_column: IconViewColumn,
   border_all: IconBorderAll,
+  // "Select entire table" reuses the grid glyph (no dedicated select_all icon
+  // to keep this file under the max-lines budget).
+  select_all: IconBorderAll,
   border_outer: IconBorderOuter,
   border_inner: IconBorderInner,
   border_clear: IconBorderClear,
@@ -929,8 +927,13 @@ const iconMap: Record<string, React.ComponentType<IconProps>> = {
   more_vert: IconMoreVert,
   // Page break
   page_break: IconPageBreak,
+  // Watermark
+  branding_watermark: IconWatermark,
   // Navigation
   arrow_back: IconArrowBack,
+  // Navigation pane
+  search: IconSearch,
+  toc: IconToc,
   // Comments sidebar
   done_all: IconDoneAll,
   check_circle: IconCheckCircle,

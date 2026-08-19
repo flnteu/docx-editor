@@ -1,4 +1,4 @@
-# Contributing to @eigenpal/docx-editor-react
+# Contributing to @docx-editor.dev/react
 
 Thanks for your interest in contributing! This guide will help you get started.
 
@@ -33,13 +33,13 @@ bun run typecheck
 # Unit tests
 bun test
 
-# E2E tests (requires Playwright browsers)
-npx playwright install --with-deps chromium
-npx playwright test --timeout=30000 --workers=4
-
-# Single test file
-npx playwright test e2e/tests/formatting.spec.ts --timeout=30000
+# Public API, adapter parity, and locales
+bun run check:parity
+bun run api:check
+bun run i18n:validate
 ```
+
+Browser E2E returns only after the public `EditorDriver` boundary exists.
 
 ## Code Style
 
@@ -60,7 +60,7 @@ Contributors are required to sign our [Contributor License Agreement](CLA.md). T
 1. **Fork** the repository and create a branch from `main`
 2. **Read the code** before modifying it — understand the dual rendering system (see [Architecture](docs/ARCHITECTURE.md))
 3. **Make your changes** — keep them focused and minimal
-4. **Add/update tests** for your changes (see `e2e/` for E2E tests)
+4. **Add/update package tests** for your changes
 5. **Verify** everything works:
    ```bash
    bun run typecheck && bun test && bun run build:packages
@@ -72,7 +72,7 @@ Contributors are required to sign our [Contributor License Agreement](CLA.md). T
 The editor has two rendering systems:
 
 - **Hidden ProseMirror** — the real editing state (selection, undo/redo, keyboard input)
-- **Visible Pages** (layout-painter) — what the user sees, rebuilt from PM state on every change
+- **Visible Pages** (painter-model) — what the user sees, rebuilt from PM state on every change
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture and [CLAUDE.md](.claude/CLAUDE.md) for the agent-facing quick reference (also useful for humans).
 
@@ -83,7 +83,7 @@ Every published package's `@public` exports are locked in `docs/api/<pkg-slug>/<
 If you change a `@public` symbol — or add a new one — regenerate and commit the snapshot:
 
 ```bash
-bun run --filter '@eigenpal/docx-editor-<pkg>' build
+bun run --filter '@docx-editor.dev/<pkg>' build
 bun run api:extract
 git add docs/api/<pkg-slug>/
 ```
@@ -102,11 +102,12 @@ The same `@public` surface is also emitted as structured JSON for downstream doc
 
 ## Adapter Parity
 
-The editor ships first-party adapters for React (`packages/react`) and Vue (`packages/vue`). Both share `@eigenpal/docx-editor-core`, which owns the parser, ProseMirror schema, layout engine, layout bridge (page mapping, footnote convergence, header/footer measurement), and serializer. Adapters only own their framework-specific shell, components, and lifecycle wiring.
+The editor ships first-party adapters for React (`packages/react`) and Vue (`packages/vue`). Both share `@docx-editor.dev/core`, which owns the parser, ProseMirror schema, layout engine, layout bridge (page mapping, footnote convergence, header/footer measurement), and serializer. Adapters only own their framework-specific shell, components, and lifecycle wiring.
 
-**When you touch layout, parsing, or rendering logic, put it in core, not in an adapter.** If you copy a 30-line helper from React to Vue, you've created a divergence trap. The footnote convergence loop (`stabilizeFootnoteLayout` in `packages/core/src/layout-bridge/footnoteLayout.ts`) is the canonical example: one helper, both adapters call it.
+**When you touch layout, parsing, or rendering logic, put it in core, not in an adapter.** If you copy a 30-line helper from React to Vue, you've created a divergence trap. The footnote convergence loop (`stabilizeFootnoteLayout` in `packages/core/src/flow-model/footnoteLayout.ts`) is the canonical example: one helper, both adapters call it.
 
-Parity smoke tests live under `e2e/tests/parity/smoke/` and run each spec against both demos. Add one when you fix a bug that could plausibly affect rendering on either side.
+Use `bun run check:parity` for adapter contract and surface parity. Browser parity
+coverage returns with the public `EditorDriver` boundary.
 
 ## Reporting Bugs
 
@@ -118,4 +119,4 @@ Open an issue at [github.com/eigenpal/docx-editor/issues](https://github.com/eig
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+By contributing, you agree that your contributions will be licensed under [Apache 2.0](LICENSE), except in `packages/editor-api/` and `packages/pro/`, which carry the EigenPal Pro Evaluation License 1.0.

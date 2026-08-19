@@ -2,53 +2,53 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import dts from 'vite-plugin-dts';
 import { resolve } from 'path';
+import { existsSync } from 'node:fs';
 
-// Library build for @eigenpal/docx-editor-vue. Vite (not tsup) because the
-// package ships .vue SFCs that need the @vitejs/plugin-vue compiler step.
-// External: vue, prosemirror-*, and the editor core — consumers bring those.
+// Library build for @docx-editor.dev/vue. The adapter is a thin renderer over
+// the private, declaration-only editor contract, which is bundled so the
+// published tarball carries no reference to a private path. vue is external —
+// consumers bring it.
 export default defineConfig({
+  resolve: {
+    alias: [
+      {
+        // Core lanes are a mix of flat files (`contracts/editor.ts`) and directory
+        // entries (`editor/index.ts`, `layout/index.ts`, ...). Mapping every subpath to
+        // `$1.ts` broke the library build the moment a lane became a directory, so the
+        // resolver tries the flat file first and falls back to the directory index.
+        find: /^@docx-editor\.dev\/core\/(.+)$/,
+        replacement: `${resolve(__dirname, '../core/src')}/$1`,
+        customResolver(source: string) {
+          return existsSync(`${source}.ts`) ? `${source}.ts` : resolve(source, 'index.ts');
+        },
+      },
+      {
+        find: '@docx-editor.dev/core',
+        replacement: resolve(__dirname, '../core/src/index.ts'),
+      },
+    ],
+  },
   plugins: [
     vue(),
-    // Exclude __tests__ + *.test-d.ts so type-level conformance tests don't
-    // leak into the published tarball (dist/ → npm). Reviewer caught this
-    // on PR #359.
     dts({
       include: ['src/**/*'],
       exclude: ['src/**/__tests__/**', 'src/**/*.test-d.ts'],
-      // Pin the entry root so multi-entry builds still flatten declarations
-      // to dist/index.d.ts + dist/ui.d.ts (auto-detect drifts to a parent
-      // dir once core's workspace types enter the graph).
       entryRoot: 'src',
-      // Keep workspace package names (`@eigenpal/docx-editor-core`,
-      // `@eigenpal/docx-editor-i18n`) intact in published declarations.
-      // Otherwise tsconfig.json's `paths` field rewrites them to
-      // `../../core/src/*.ts` — valid in this repo but broken once
-      // consumers install from npm, and a hard fail for API Extractor's
-      // surface check since it would walk the source.
       pathsToAliases: false,
-      // Don't ship `.d.ts.map`. Maps point at source `.ts` files that
-      // aren't in the published tarball, so they're dead weight.
-      compilerOptions: { declarationMap: false },
+      compilerOptions: { declarationMap: false, stripInternal: true },
     }),
   ],
   build: {
     lib: {
-      // Keep public subpaths backed by real JS chunks so consumers can import
-      // composables/plugin APIs without dragging in the full editor shell.
       entry: {
         index: resolve(__dirname, 'src/index.ts'),
-        ui: resolve(__dirname, 'src/ui.ts'),
-        composables: resolve(__dirname, 'src/composables/index.ts'),
-        dialogs: resolve(__dirname, 'src/components/dialogs/index.ts'),
-        'plugin-api': resolve(__dirname, 'src/plugin-api/index.ts'),
-        styles: resolve(__dirname, 'src/styles/index.ts'),
       },
       formats: ['es', 'cjs'],
       fileName: (format, entryName) => `${entryName}.${format === 'es' ? 'js' : 'cjs'}`,
       cssFileName: 'docx-editor-vue',
     },
     rollupOptions: {
-      external: ['vue', /^@eigenpal\/docx-editor-core(\/.*)?$/, /^prosemirror-/],
+      external: (id) => id === 'vue' || id === 'harfbuzzjs' || id === 'emf-converter',
     },
     emptyOutDir: true,
   },

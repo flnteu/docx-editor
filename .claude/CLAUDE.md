@@ -1,215 +1,385 @@
-# Eigenpal DOCX Editor
+# docx-editor.dev
 
-Bun + React/Vue WYSIWYG editor for DOCX. Client-side only, no backend.
-Per-package entries: `packages/react/src/index.ts`, `packages/vue/src/index.ts`, `packages/core/src/headless.ts`.
-Output must look identical to MS Word. Preserve fonts, theme colors, styles, tables, headers/footers, section layout.
+WYSIWYG editor and rendering engine for DOCX. Output must match MS Word: fonts,
+theme colors, styles, tables, headers/footers, section layout.
 
----
+## Communication
+
+Write all replies in ASD-STE100 Simplified Technical English.
+
+- Use the active voice.
+- Keep sentences to 20 words or fewer.
+- Give one idea in each sentence.
+- Use simple tenses: present, past, and future.
+- Use the same word for the same idea each time.
+- Do not use idioms, slang, or jargon.
+- Keep paragraphs to 6 sentences or fewer.
+
+Keep technical items exact. File paths, function names, flags, and numbers do not
+change. For example, write `packages/core/src/layout/semantic-layout.ts` and
+`w:contextualSpacing` in full.
+
+## Packages
+
+One engine. Thin chrome on top.
+
+| Package       | What                                                                                                                                                                                           | Status                         |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `core`        | **The engine.** `store/` (canonical tree, ops, OPC read/write), `layout/` (DOM-free), `output/` (paint), `editor/` (facade, surface, chrome registry), `contracts/`, `binding/`, `automation/` | published, external to `react` |
+| `react`       | The adapter: provider + hooks, holds no editing state                                                                                                                                          | published                      |
+| `i18n`        | Shared strings                                                                                                                                                                                 | published                      |
+| `editor-api`  | `DocxEditor` automation object model, headless/server                                                                                                                                          | published, Pro license         |
+| `pro`         | Review module (comments, tracked changes) + custom nodes, as `EditorModule`s                                                                                                                   | published, Pro license         |
+| `fonts`       | Metric-compatible substitutes for Word's defaults                                                                                                                                              | published                      |
+| `vue`, `nuxt` | WIP, not shipping                                                                                                                                                                              | private                        |
+
+React is the only real adapter today. Parity rules below are the target, not the
+state.
+
+**The engine must resolve to ONE copy.** It holds module-level state — the
+HarfBuzz shaper and its cache budget, the grapheme boundary strategy, layout
+caches keyed by object identity. Two copies in a tree do not crash; they load the
+shaper twice and miss every identity-keyed cache, quietly. So `core` is external
+to `react` (not inlined) and a **peer** of both `react` and `pro`, which makes the
+package manager resolve one and say so at install when it cannot. Both adapters
+assert their own dependency shape:
+`packages/{react,pro}/src/__tests__/package-dependencies.test.ts`. Never move
+`core` back to a regular `dependency`.
+
+Inside `core`, each directory is a guarded lane with a declared dependency edge
+and environment (`store` and `layout` are DOM-free, `binding` is the only
+PM-aware one). The DAG is machine-readable in
+`packages/core/src/__tests__/core-lane-graph.ts` and documented in
+`docs/architecture/production-engine-packages.md`. A lane taking a new dependency
+edits that DAG.
+
+Active production authority: `openspec/changes/typed-ooxml-paragraph-editor/`.
+Superseded proposals are not requirements.
+
+## Architecture — one pipeline
+
+```
+bytes → readOoxmlPackage (bounded OPC/XML) → canonical OoxmlNode tree per part
+→ TreeDocumentStore → semantic-layout → semantic-paint → serializeOoxmlPart
+```
+
+**The tree store is the only source of truth.** Painted pages ARE the editable
+surface — contenteditable, but the DOM is a picture: browser mutations are
+prevented and re-expressed as tree ops.
+
+**ProseMirror is only a projection** of one tree revision. The reverse direction
+never reconstructs the tree from it: it diffs the edited doc against the tree it
+came from, emits the smallest `TreeDocOp`s that explain the difference, or
+refuses outright (`TreeBindingRejection`). A silently-dropped edit is worse than
+a refused one, because only the refusal can be reconciled. PM exists only in
+`core/src/binding/`; `store`, `layout`, `output` and `contracts` are PM-free,
+enforced by `store/__tests__/prosemirror-isolation.test.ts`.
+
+- **Canonical tree** — typed kinds where layout needs them (paragraph/run/table);
+  everything else is a lossless `generic` node. Invalid or misplaced known
+  elements demote to generic. Unknown content never locks editing.
+- **Fidelity** — structural, gated by two D9 oracles: `canonicalOoxmlFingerprint`
+  and a save/reopen `semanticDigest`. Modeled XML parts re-emit normalized; byte
+  identity applies to non-XML parts only.
+- **Mutation** — `TreeDocumentStore.transact` over `TreeDocOp`s (node id + UTF-16
+  offset) is the only write path. The node index makes cell and nested paragraphs
+  ordinary. Cross-cell joins refused (`not-adjacent-siblings`).
+- **Layout** (`layout/semantic-layout.ts`) — DOM-free, injected `TextMeasurer`,
+  points everywhere (twips convert at property-read boundaries). `storyBlocks`
+  walks body/hdr/ftr roots and flattens block SDTs. Tables: row pagination,
+  header-row repeats, vMerge, clamped gridSpan. Headers/footers laid out once per
+  variant at flow height, attached per page. Incremental: per-block cache keys +
+  flow checkpoints + convergence; a no-change pass returns previous pages by
+  identity. Paragraph fidelity resolves through `layout/style-cascade.ts`:
+  `w:spacing` line rules, first-line/hanging indents, `w:contextualSpacing`,
+  `w:pBdr` on all edges, tab stops and leaders, `w:vanish` (not measured, not
+  painted), list markers from `numbering.xml`, table styles via `basedOn` gated
+  by `w:tblLook`.
+- **Selection** — maps only through `data-paragraph-id`/`data-start`. Page
+  furniture is `contenteditable=false` + `[data-docx-hf]`, excluded from
+  selection.
+- **Caret** (`editor/surface-caret.ts`) — the engine paints its own and
+  suppresses the native one (`caret-color: transparent` on the pages layer) for
+  exactly as long as it does. Geometry comes from `caretAt` on the layout, never
+  the DOM, so an empty paragraph gets a caret too. The element is furniture
+  (`data-docx-marker`, `contenteditable=false`) on the page content box, not on a
+  line. Fails soft: range selection, IME composition or an unplaced position
+  hands the native caret back rather than leaving none.
+- **Input** (`editor/surface-input.ts`) — one keymap for every host (Word's
+  paragraph shortcuts, `beforeinput` dispatch, clipboard, IME readback) as
+  factories over `PaginatedSurface`, so hosts cannot drift into separate
+  hand-written keymaps.
+- **`createDocxEditor`** (`editor/docx-editor.ts`) — the full `Editor` contract
+  over the surface; unimplemented reads return typed empty values. `snapshot()`
+  is version-cached: same reference until state moves, sub-objects
+  reference-stable (`useSyncExternalStore` contract), `perf` outside it.
+  `attach(el)`/`detach()` split creation from mounting; detach remounts from
+  saved bytes (undo/caret reset).
+- **Chrome registry** (`editor/chrome-controls.ts`) — `CHROME_GROUPS` is the
+  toolbar taxonomy; `ChromeSlotId` (`text.bold`, `font.family`, …) is public API,
+  so renames are breaking. `commandForSlot`/`commandForSlotValue` is the command
+  table; `toolbarCommandState`/`runToolbarCommand` give shared can-before-exec.
+  `ChromeControlState` says HOW a control dispatches (`command`/`value`/`save`),
+  never whether it is enabled — enabled state has exactly one source,
+  `toolbarCommandState`. Unwired slots render disabled with the engine's reason.
+
+## React adapter
+
+`DocxEditor.Root` (owns the instance, created in an effect, StrictMode-safe,
+container-less) → `.Viewport` (the engine's load-bearing scroll classes) →
+`.Content` (attach/detach in a layout effect). All chrome is a hook consumer.
+
+- `useDocxEditor()`, `useEditorState(selector, isEqual?)` (one multiplexed
+  subscription + slice memoization — a page selector must NOT re-render on a bold
+  toggle), `useEditorCommand(slotId)` → `{execute, isActive, isEnabled,
+disabledReason}`, `useEditorEvent`, `useFontFamily`.
+- `DocxEditor.Toolbar` arrangement derives FROM `CHROME_GROUPS`, never
+  hand-listed. Customization ladder: `className`/`data-active` → `icon` prop →
+  `asChild` → in-place slot override (`hidden` removes, `preset={false}` opts
+  out) → raw hooks. Complex parts are compounds
+  (`FontFamily.Trigger/Content/Item`) over a part-level context.
+- `<DocxEditor>` (props + the 7-member `DocxEditorRef`) is sugar over the same
+  primitives. Parity-contract gated; do not widen the ref.
+- Chrome mousedown must `preventDefault()` (skip INPUT/SELECT/TEXTAREA) or it
+  steals the caret.
+- Exported names describe capabilities, never engine internals (no "tree").
+
+Not built yet: structural table ops (insert row/column, merge),
+comments/tracked-changes derivation, caret scroll-into-view,
+zoom-without-remount, the Vue twin of provider/hooks.
 
 ## Verify
 
 ```bash
-bun run typecheck && npx playwright test --grep "<pattern>" --timeout=30000 --workers=4
+bun run typecheck
+bun run lint
+bun run test
+bun run check:parity
+bun run api:check
+bun run i18n:validate
+openspec validate typed-ooxml-paragraph-editor --strict
 ```
 
-- Never run full suite (500+ tests) unless final validation.
-- Per-test timeout 30s; if cmd >60s, narrow scope.
+- `bun run lint`'s only errors are the `max-lines` caps: 1000 lines for most files, 2900 for the
+  handful already past it. Nothing else catches them, so adding to a large file passes typecheck
+  and the whole suite and fails CI. Extract; do not raise the cap. It covers `examples/*/src` as
+  well as `packages/*/src` — the demos hit the same cap.
+- `bun run test` shards the suite one process per file across a worker pool
+  (`scripts/test/run-parallel.mjs`, `--jobs N` to pin the width). That is also
+  what CI runs. `bun test` still works and is the one to reach for when you want
+  a single file, `-t`, or `--watch`; `bun run test:serial` is the whole suite the
+  old way.
+- A file that leaves state on `document` can only be caught by the serial run —
+  per-file processes hide it. Scope DOM queries to the container you mounted.
+- `git commit --no-verify` is fine locally, but `bun run format` and `bun run lint` are not
+  optional — the hook runs both, and they are the two gates nothing else covers. Run the other
+  relevant scoped checks too, and report a bypassed failing gate instead of calling it passing.
+- Compare the run against the non-clean baseline in the active change.
 - `bun run format` before pushing.
 
-### Test file map
+## Parity and styling
 
-| Area                  | File                           |
-| --------------------- | ------------------------------ |
-| Bold/Italic/Underline | `formatting.spec.ts`           |
-| Alignment             | `alignment.spec.ts`            |
-| Lists                 | `lists.spec.ts`                |
-| Colors                | `colors.spec.ts`               |
-| Fonts                 | `fonts.spec.ts`                |
-| Enter/Paragraphs      | `text-editing.spec.ts`         |
-| Undo/Redo             | `scenario-driven.spec.ts`      |
-| Line spacing          | `line-spacing.spec.ts`         |
-| Paragraph styles      | `paragraph-styles.spec.ts`     |
-| Toolbar state         | `toolbar-state.spec.ts`        |
-| Cursor-only ops       | `cursor-paragraph-ops.spec.ts` |
-| Comments sidebar      | `comments-sidebar.spec.ts`     |
+Platform-neutral logic goes in the engine; adapter-only glue may diverge.
+`scripts/parity/parity.contract.json` enumerates paired
+`DocxEditorProps`/`DocxEditorRef` members. Adding an adapter prop or ref method:
+edit the adapter, `bun run api:extract`, add it to the right bucket (`paired`,
+`deferredInVue`, `pairedViaInheritance`, `vueExclusive`), rerun `bun run
+check:parity-contract`.
 
-Run `comments-sidebar.spec.ts` when touching any of these (all under `packages/react/src/`): `components/UnifiedSidebar.tsx`, `components/sidebar/**`, `hooks/useCommentSidebarItems.tsx`, `components/DocxEditor/hooks/useSelectionOverlay.ts` (`updateSelectionOverlay`/`onSelectionChange`), `components/DocxEditor.tsx` (`onSelectionChange` handler, `expandedSidebarItem` state).
+All editor chrome CSS and color tokens live in the core stylesheet; adapters only
+`@import` it (enforced by `bun run check:adapter-css-thin`). Never hardcode
+hex/rgba — use `--doc-*` tokens or shadcn utilities. The document canvas is not
+themed; it stays Word-faithful.
 
-Empty-doc specs (`formatting`, `text-editing`) use `editor.gotoEmpty()`. Demo-asserting specs use `editor.goto()`. Don't mix in one spec.
+## Public API
 
----
+API Extractor snapshots live in `docs/api/<pkg-slug>/<entry>.api.md`; CI runs
+`bun run api:check`. On drift: `bun run api:extract`, commit. Changing a
+`@public` symbol: tag it in TSDoc, rebuild, re-extract, commit. `bun run
+docs:json` generates consumer JSON (gitignored, CI smoke test).
 
-## Architecture — Dual Rendering
+Vue composables must declare a named `Use<Name>Return` interface and annotate the
+return type, or core's internal types leak into the snapshot.
 
-**Two renderers. Know which one owns your bug.**
+## Security — untrusted input
 
-- **HIDDEN ProseMirror** (`left: -9999px`) — editing state, undo/redo, keyboard. `components/DocxEditor/HiddenProseMirror.tsx` (body) + `HiddenHeaderFooterPMs.tsx` (one EditorView per HF `rId`).
-- **VISIBLE pages** — what user sees. Static DOM rebuilt from PM state. **NOT `toDOM`** — `src/layout-painter/renderPage.ts`. Fixing `toDOM` for a visual bug → user sees nothing.
+**Every value from a DOCX, pasted HTML or embedded part is attacker-controlled.**
+A `.docx` is a zip of XML the sender fully controls: font names, hyperlink
+targets, shape attrs, image rels, run text. Sanitize at the bounded parse/trust
+boundary (XML read + typed/generic tree construction), never at render time, so
+every downstream sink receives a sanitized projection. Contract:
+`openspec/changes/typed-ooxml-paragraph-editor/specs/typed-ooxml-canonical-tree/`.
 
-Data flow: DOCX → `unzip` → `parser` → `Document` → `toProseDoc` → PM → painter → pages. Save: PM → `fromProseDoc` → `Document` → `serializer` → `rezip`.
+Audit these whenever you touch parsing, serialization, `output/semantic-paint*`,
+clipboard or print:
 
-Click flow: `usePagesPointer.handlePagesMouseDown` → `getPositionFromMouse` (body) or `clickToPositionDom` scoped to `.layout-page-header`/`.layout-page-footer` (HF) → PM setSelection → `PagedEditor.handleTransaction` → painter re-render.
+- **No HTML from strings** — no `innerHTML`/`outerHTML`/`insertAdjacentHTML`/
+  `document.write` on file-derived values. Use `createElement(NS)` +
+  `setAttribute`/`textContent`.
+- **URLs through `sanitizeHref`** — allowlist `http(s)/mailto/tel/ftp`, drop
+  `javascript:`/`data:`/`vbscript:`/`file:`, strip embedded tab/LF/CR. Every
+  `href`, image `hlinkHref`, and `window.open(...)` arg.
+- **Escape strings interpolated into CSS** — `@font-face` family names, and any
+  inline `style` built from file data.
+- **XML** — no DTD/external entity resolution (XXE), no nested entity expansion
+  (billion-laughs).
+- **Zip** — decompression ratio/size cap; reject part/rel/media paths with `..`
+  or a leading `/`.
+- **No zero-click external fetch** — never auto-load `TargetMode="External"`
+  rels, remote `src`, or CSS `url()`/`@import`. Gate remote loads behind an
+  explicit user action.
+- **Resource limits** — cap recursion depth (nested tables/shapes/SDT/groups) and
+  element counts. Never feed a file-supplied number into allocation, `.repeat()`
+  or a loop bound. No catastrophic-backtracking regex on file-derived strings.
+- **Escape on save** — `escapeXml` every attacker-derived string; never template
+  a raw value into markup.
+- **Prototype pollution** — guard `JSON.parse` merges and any
+  XML-attribute-name → object-key assignment against
+  `__proto__`/`constructor`/`prototype`.
+- **Field codes / OLE** — never execute or auto-resolve field instructions (DDE,
+  `INCLUDE*`) or embedded OLE/macro content. Render inert.
 
-Header/footer editing follows the same model as the body: the persistent hidden HF PM is the sole editor; the painter is the sole visible renderer in both edit and non-edit modes. The `InlineHeaderFooterEditor` overlay is UI chrome only (separator bar, options menu, save-on-close) — it does NOT mount its own EditorView. There is no `.hf-editor-pm` CSS — those workarounds existed to make PM's `toDOM` tables match the painter's flex layout and are gone now that the painter is the sole renderer. See `openspec/changes/unify-hf-editing/` for the design.
+```bash
+grep -rnE "innerHTML|outerHTML|insertAdjacentHTML|document\.write|window\.open\(|\.href\s*=|font-family:.*\$\{" packages --include="*.ts" --include="*.tsx" --include="*.vue" | grep -viE "test|\.spec\."
+```
 
-Vue host: `useDocxEditor()` in `packages/vue/src/composables/useDocxEditor.ts`. Dual-rendering rule applies to Vue too — the composable mounts the same per-`rId` persistent HF EditorView pattern (via `syncHfPMs` / `getHfPmView` / `setHfTransactionListener`) and routes HF rendering through `convertHeaderFooterPmDocToContent` in lockstep with React.
-
-### React/Vue parity
-
-Changes to layout / measurement / paint behavior MUST land in both adapters in the same PR. The Vue composable mirrors the React `PagedEditor`; if you touch only one, the other regresses silently.
-
-Before merging a change in `packages/react/`:
-
-- Find the Vue counterpart in `packages/vue/src/composables/useDocxEditor.ts` (or under `packages/vue/src/`) and apply the same behavior change.
-- If the change is platform-agnostic logic, lift it into `packages/core/` and have both adapters call it. The float-zone pipeline (`measureBlocksWithFloats` in `packages/core/src/layout-bridge/measuring/measureBlocksPipeline.ts`) is the canonical example.
-- The reverse holds when starting from Vue.
-
-Adapter-only changes are fine for things genuinely scoped to one framework (React-specific hook glue, Vue composition API ergonomics, the demo apps). When in doubt, mirror.
-
-### FlowBlock invariant — 3 switches
-
-Adding a `FlowBlock` variant in `packages/core/src/layout-engine/types.ts` requires updating all three; each ends with `assertExhaustiveFlowBlock` so `bun run typecheck` names the missing site:
-
-1. `runLayoutPipeline` in `packages/core/src/layout-engine/index.ts`
-2. `measureBlock` in `packages/react/src/components/DocxEditor/internals/measureBlock.ts`
-3. `measureBlock` in `packages/vue/src/composables/useDocxEditor.ts`
-
-### Painter DOM contract
-
-Stable dataset attrs on painted DOM (CSS, queries, selection map depend on these):
-
-- `data-block-id` — block index
-- `data-from-line`/`data-to-line` — measured line range
-- `data-pm-start`/`data-pm-end` — PM positions for selection mapping (body AND HF — different PM docs, scope queries with `.layout-page-content` for body / `.layout-page-header|footer` for HF; see `findBodyPmSpans.ts` for the pattern)
-- `data-comment-id` — comment-range spans
-- `data-change-author`/`data-change-date`/`data-revision-id` — tracked changes
-- `data-continues-from-prev`/`data-continues-on-next` — split paragraphs
-- `data-flex-line` — flex-promoted lines (image-aligned, right-tab); `renderParagraphFragment` suppresses `text-indent` on these (would apply per-flex-item)
-
-### Key file map
-
-| Debugging                   | File                                                            |
-| --------------------------- | --------------------------------------------------------------- |
-| Text/paragraph rendering    | `layout-painter/renderParagraph.ts`                             |
-| Image rendering             | `layout-painter/renderImage.ts`                                 |
-| Table rendering             | `layout-painter/renderTable.ts`                                 |
-| Page composition            | `layout-painter/renderPage.ts`                                  |
-| Formatting commands         | `prosemirror/extensions/marks/`, `nodes/`                       |
-| Keyboard shortcuts          | `prosemirror/extensions/features/BaseKeymapExtension.ts`        |
-| Toolbar ↔ selection         | `prosemirror/plugins/selectionTracker.ts`                       |
-| DOCX XML parsers            | `docx/paragraphParser.ts`, `docx/tableParser.ts`                |
-| Document → PM               | `prosemirror/conversion/toProseDoc.ts`                          |
-| Click → PM position         | `components/DocxEditor/hooks/usePagesPointer.ts`                |
-| Selection rects / caret     | `components/DocxEditor/hooks/useSelectionOverlay.ts`            |
-| HF persistent PMs           | `components/DocxEditor/HiddenHeaderFooterPMs.tsx`               |
-| HF caret in painter         | `components/DocxEditor/DocxEditorPagedArea.tsx` (`hfCaretRect`) |
-| HF inline chrome            | `components/InlineHeaderFooterEditor.tsx`                       |
-| Layout pipeline             | `components/DocxEditor/hooks/useLayoutPipeline.ts`              |
-| Scroll API                  | `components/DocxEditor/hooks/usePagedScrollApi.ts`              |
-| Image resize/drag           | `components/DocxEditor/hooks/useImageInteractions.ts`           |
-| Font/HF reflow triggers     | `components/DocxEditor/hooks/useLayoutTriggers.ts`              |
-| Table resize                | `components/DocxEditor/hooks/useTableResizeState.ts`            |
-| Measure-block cache         | `components/DocxEditor/internals/measureBlock.ts`               |
-| Sidebar comment Y positions | `components/DocxEditor/internals/sidebarAnchorPositions.ts`     |
-| PM position → DOM           | `components/DocxEditor/internals/pmAnchors.ts`                  |
-| Main toolbar                | `components/Toolbar.tsx`                                        |
-| Editor CSS                  | `prosemirror/editor.css`                                        |
-
-### Extensions
-
-`src/prosemirror/extensions/` — `nodes/`, `marks/`, `features/`. `StarterKit.ts` bundles all. `ExtensionManager.buildSchema()` (sync) → `initializeRuntime()` (post EditorState). Singleton in `schema/index.ts`.
-
-### Pitfalls
-
-- **Icons** — inline SVG in `components/ui/Icons.tsx`, NOT a font. `<MaterialSymbol name="x">` looks up `iconMap`; missing → renders raw text. Add SVG paths from fonts.google.com/icons.
-- **Tailwind scope** — library scoped to `.ep-root`. Painter output isn't always protected → use inline styles on painted elements.
-- **Focus stealing** — any mousedown that bubbles to PM moves caret. Dropdown/dialog mousedown needs `stopPropagation()`.
-- **No `require()`** — ESM only.
-
-OOXML reference: `reference/quick-ref/wordprocessingml.md`, `themes-colors.md`; schemas in `reference/ecma-376/part1/schemas/`. PDFs in `reference/ecma-376/` are gitignored — run `bun run reference:fetch` once when you need them.
-
----
+Fix sibling sinks when you fix one. `openPrintWindow` still builds its popup via
+`document.write` with an unescaped `title`/`content` — a known sink to harden,
+not a reference.
 
 ## i18n
 
-`packages/i18n/en.json` is source of truth. Other locales mirror its shape with `null` = falls back to English. Missing key = CI fails.
+`packages/i18n/en.json` is source of truth; other locales mirror its shape with
+`null` = fall back to English. A missing key fails CI.
 
 ```ts
-import { useTranslation } from '../i18n';
 const { t } = useTranslation();
-t('toolbar.bold');
-t('dialogs.findReplace.matchCount', { current: 3, total: 15 });
+t('formattingBar.bold');
+t('navigation.find.counter', { current: 3, total: 15 });
 ```
 
-Workflow:
+New string: add to `en.json`, use `t('key')`, `bun run i18n:fix`. New language:
+`bun run i18n:new <code>`, fill nulls, `bun run i18n:status`. Never hardcode
+user-facing English in components.
 
-- New string → add to `en.json`, use `t('key')`, run `bun run i18n:fix`.
-- New language → `bun run i18n:new <code>`, fill nulls, `bun run i18n:status`.
-- Validate: `bun run i18n:validate`.
+## Docs site
 
-Never hardcode user-facing English in components.
+Authored here in `docs/site/content/` (MDX), synced by the site repo at build
+time. Feature-support claims live in `docs/site/data/word-features.ts` (typed
+matrix), never hand-written in prose. A PR that changes user-visible behavior
+updates both.
 
-Vue composables: declare named `Use<Name>Return` interface and annotate return type. Without it, core's internal types leak into the API Extractor snapshot.
+**Docs prose follows the
+[Google developer documentation style guide](https://developers.google.com/style)**
+([highlights](https://developers.google.com/style/highlights) is the summary):
 
----
+- [Voice and tone](https://developers.google.com/style/tone) — conversational
+  and friendly, not frivolous. No buzzwords, idioms, exclamation marks, or
+  pop-culture references. In procedures, never "simply", "easy", "just",
+  "quickly", or "please".
+- Grammar — [second person](https://developers.google.com/style/person)
+  ("you", not "we"), [active voice](https://developers.google.com/style/voice),
+  [present tense](https://developers.google.com/style/tense), American
+  spelling. State the condition before the instruction ("If X, click Y").
+- [Timeless](https://developers.google.com/style/timeless-documentation) — no
+  "currently", "new", "soon", "as of this writing". Document what the product
+  does; never pre-announce features.
+- [Headings](https://developers.google.com/style/headings) — sentence case in
+  all titles, headings, and navigation.
+- [Lists](https://developers.google.com/style/lists) — numbered for sequences,
+  bulleted otherwise; parallel structure; serial (Oxford) commas.
+- [Text formatting](https://developers.google.com/style/text-formatting) —
+  code font for filenames, identifiers, console output, and placeholders; bold
+  for UI elements only; italics only for term definitions and work titles.
+- [Link text](https://developers.google.com/style/link-text) — a descriptive
+  phrase that matches the target's title. Never "click here", "this article",
+  or a bare URL. Introduce with "For more information, see …".
+- [Code samples](https://developers.google.com/style/code-samples) — introduce
+  each sample with text; wrap lines at 80 characters; mark omissions with a
+  comment, not an ellipsis.
+- [Accessibility](https://developers.google.com/style/accessibility) — proper
+  heading hierarchy, alt text on every image, no images of text or terminal
+  output, no directional language ("above", "below"), meaning never carried by
+  color alone.
+- [Global audience](https://developers.google.com/style/translation) — short
+  sentences (26 words or fewer), one idea per sentence, acronyms defined on
+  first use, no culturally specific references.
+- The [word list](https://developers.google.com/style/word-list) settles
+  spelling and usage; use unambiguous
+  [dates and times](https://developers.google.com/style/dates-times).
 
-## Public API surface
+**Two `meta.json` must agree.** The `"root": true`
+`docs/site/content/meta.json` drives the sidebar with full paths; each subfolder
+has its own. Register a new page in BOTH, or it is URL-reachable but missing from
+the sidebar.
 
-API Extractor snapshots live in `docs/api/<pkg-slug>/<entry>.api.md`. CI runs `bun run api:check`.
+**Diagrams are mermaid**, in a ` ```mermaid ` fence — not ASCII box drawing.
+ASCII renders at whatever the code block's font does, wraps on a phone, and is
+unreadable to a screen reader; mermaid scales and picks up the site theme. Keep
+it to the shape being explained (a flow, a sequence, a state machine); a diagram
+that just restates the prose earns nothing.
 
-CI fails on drift → `bun run api:extract` → commit.
-Changing a `@public` symbol → tag in TSDoc, rebuild package, `bun run api:extract`, commit snapshot.
+OOXML reference: `reference/quick-ref/wordprocessingml.md`, `themes-colors.md`;
+schemas in `reference/ecma-376/part1/schemas/`. PDFs are gitignored — run `bun
+run reference:fetch` once when needed.
 
-`bun run docs:json` generates downstream-consumer JSON. Output is gitignored; CI runs it as a smoke test.
+## Releasing
 
-### Parity contract
+Every code PR gets a changeset (`bun changeset`, or a correct hand-written
+`.changeset/*.md`). Skip only for test/docs/CI-only PRs.
 
-`scripts/parity/parity.contract.json` enumerates which `DocxEditorProps`/`DocxEditorRef` members are paired across React/Vue. CI runs `bun run check:parity-contract`.
+- The frontmatter package name must exactly match a published package and the
+  bump must be `patch`/`minor`/`major`. A wrong name crashes the Release
+  workflow — copy it from an existing changeset.
+- Published packages are one fixed group: declare one bump, the rest follow.
+- Default `patch`; `minor` for additive public API; `major` for breaks.
+- The summary lands verbatim in CHANGELOG: consumer-facing, what changed not how,
+  `Fixes #N` at the end if relevant. No emojis, no marketing.
+- Keep the summary minimal: one sentence, two at most. No bullet lists, no
+  implementation detail.
 
-Adding adapter prop/ref method:
+Never push the `chore: release` commit by hand, delete `.changeset/*.md` outside
+`changeset version`, or hand-edit `CHANGELOG.md` / `package.json#version`.
 
-1. Edit adapter, `bun run api:extract`.
-2. Add to contract bucket: `paired`, `deferredInVue` (React-only), `pairedViaInheritance` (React explicit, Vue via `EditorRefLike`), or `vueExclusive`.
-3. `bun run check:parity-contract`.
+**Third-party notices.** Every publishable package ships a
+`THIRD_PARTY_NOTICES.md` reproducing the license of each package esbuild inlines
+into its bundles, because MIT/Apache-2.0 both require the notice to travel with
+the copy. Only genuinely inlined code counts: core declares fast-xml-parser,
+fflate and prosemirror-\* as real `dependencies` with no `noExternal`, so esbuild
+leaves them external, npm installs them with their own licenses, and every
+package currently generates an empty notice. An empty run is the correct result
+here, not a broken generator — what would be wrong is a bundled dependency
+missing its text, which fails the run outright. The Release
+workflow generates it from `dist/metafile-*.json` just before publishing; the
+file is gitignored, so regenerate with `bun run build:packages && bun run
+notices:generate`. `notices:check` compares against the CURRENT `dist/`, so it
+only means anything right after a build and reports "missing" on a clean tree by
+design. The run is all-or-nothing: a tsup config that stops emitting `metafile:
+true`, a bundled dependency with no license text, or a `files` array that forgets
+the notice fails it — and a failure deletes the notices rather than shipping a
+stale one. A publishable package that is not a tsup bundle has no metafile and
+fails until it gets an attribution path; `packages/fonts` carries OFL text in
+`licenses/`, which no metafile can see.
 
----
+## Conventions
 
-## Releasing (changesets)
-
-Every code PR → `bun changeset` → commit `.changeset/*.md`. Skip only for test/docs/CI-only PRs.
-
-- Use full npm name in frontmatter (`@eigenpal/docx-editor-react`). Always run `bun changeset`, don't hand-write. Wrong name crashes post-merge Release workflow.
-- All published packages in fixed group — declare one bump, others follow.
-- Default bump: `patch`. `minor` for additive public API. `major` for breaks.
-- Summary lands verbatim in CHANGELOG; write for consumer.
-
-Release: merge the bot's `chore: release` PR. Publish runs via OIDC, tags, GH release. ~3 min.
-
-Branches: `main` = 1.x line. `0.x` = pre-rename maintenance, patch/minor only.
-
-Packages: `@eigenpal/docx-editor-{react,core,agents,i18n,vue}`, `@eigenpal/nuxt-docx-editor`. All published.
-
-### Don't
-
-- Push `chore: release` commit by hand.
-- Delete `.changeset/*.md` outside `changeset version`.
-- Edit `CHANGELOG.md` or `package.json#version` by hand.
-
----
-
-## PR style
-
-Short factual title (conventional-commit prefix). Body is the minimum the diff doesn't show — often one sentence.
-
-Don't: `@`-mention contributors, reference unrelated PR/issue numbers, list changed files, add tooling footers, use emojis.
-
----
-
-## Bugs
-
-Issue tracker: `gh issue view <N> --repo eigenpal/docx-editor`. Dev server: `bun run dev` → `http://localhost:5173/`. Commit format: `fix: ... (fixes #N)`.
-
-Toolbar icons: Material Symbol SVGs, saved locally. Screenshots → `screenshots/`.
+- **PRs** — short factual title (conventional-commit prefix); body is the minimum
+  the diff doesn't show, often one sentence. No `@`-mentions, unrelated issue
+  numbers, file lists, tooling footers or emojis.
+- **Bugs** — `gh issue view <N> --repo eigenpal/docx-editor`. Dev server `bun run
+dev` → `http://localhost:5173/`. Live demo `http://docx-editor.dev/editor`.
+  Commit `fix: ... (fixes #N)`. Screenshots → `screenshots/`.
+- **ESM only** — no `require()`.
+- **Tailwind** — scoped to `.docx-editor`; the scoping is baked into `dist/editor.css`
+  at core build time (`scripts/build-core-styles.mjs` + `packages/core/tailwind.dist.config.cjs`),
+  so the shipped file carries no raw `@tailwind` directive. Rendered output isn't
+  always protected, so use inline styles on painted elements. Never put Tailwind
+  utilities on the element that carries `docx-editor` itself — scoped utilities only
+  match descendants.
+- **Focus stealing** — painted pages are the editable surface, so any mousedown
+  reaching them moves the caret.
+- **Icons** — inline SVG (Material Symbol paths), not a font. A missing name
+  renders raw text.
 
 ## Claude Code scaffolding (DEV-1256)
 
@@ -219,6 +389,12 @@ Workflow guidance comes from the **fluenta plugin marketplace**
 Claude Code prompts you to install them on first open. Skills are all
 `flnt-` prefixed (type `/flnt` to list them). Do not recreate
 `.claude/skills/`, `.claude/agents/`, `.claude/commands/`,
-`.claude/knowledge/`, `.claude/rules/`, or `.mcp.json` here — this repo is
-on `flnt-ai-config`'s `repo-map.yaml` skip list, so `bootstrap.sh` and
-`refresh-rules.sh` leave it alone (DEV-1218).
+`.claude/knowledge/`, `.claude/rules/`, or `.mcp.json` here (DEV-1218).
+
+Deliberately kept from upstream: `.claude/skills/openspec-*` and
+`.claude/commands/opsx` drive this repo's own OpenSpec workflow and have no
+marketplace equivalent.
+
+(The former generator repo `flnt-ai-config`, whose `repo-map.yaml` skip list
+this note used to cite, was archived on 2026-08-11; every repo now
+self-manages its `.claude/`, so there is nothing left to opt out of.)

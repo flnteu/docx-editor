@@ -1,0 +1,14 @@
+{
+  "title": "Guides",
+  "pages": [
+    "loading-and-saving",
+    "toolbar",
+    "zoom",
+    "content-controls",
+    "headers-footers",
+    "images",
+    "custom-styles",
+    "fonts",
+    "dark-mode"
+  ]
+}

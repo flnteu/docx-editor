@@ -1,120 +1,488 @@
 # @eigenpal/docx-js-editor
 
+## 2.5.0
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.5.0
+
+## 2.4.1
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.4.1
+
+## 2.4.0
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.4.0
+
+## 2.3.1
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.3.1
+
+## 2.3.0
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.3.0
+
+## 2.2.1
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.2.1
+
+## 2.2.0
+
+### Minor Changes
+
+- 568ccf7: Localizing the editor now works the way the docs describe it. `<DocxEditor>` takes an `i18n` prop, so a locale no longer needs a `LocaleProvider` around it; a provider still works and now composes when nested instead of resetting the subtree to English. The toolbar's overflow panel also labels its value rows (zoom, line spacing, the style, font and colour pickers) from the active catalogue rather than showing the raw i18n key.
+
+### Patch Changes
+
+- a4d7885: `<DocxEditor>`'s title bar and toolbar now sit on one `--doc-surface` band, closed by a hairline and a soft shadow directly under the toolbar, with the ruler row and the workspace below it on `--doc-bg`. The seam used to be a border under the title bar, which split the band in two and left the toolbar edge to edge on no ground of its own: the toolbar paints a rounded pill, so flush against the frame its radius never showed and the row read as a second flat bar. Hosts were adding their own wrapper to get the packaged chrome to look like the composed demo it is modelled on. Nothing about the API changes, and both surfaces follow the dark palette as before.
+- Updated dependencies [568ccf7]
+  - @docx-editor.dev/i18n@2.2.0
+
+## 2.1.3
+
+### Patch Changes
+
+- 531c47b: `<DocxEditor>` now shows rulers, and `onSave` no longer draws a button. The horizontal ruler compensates for the navigation shift and the review gutter itself, so it only measures correctly in the row above the scroll container — a slot the packaged host is the only thing that can offer, which meant a host mounting it by hand got ticks that drifted off the page. Pass `rulers={false}` for a bare page. Separately, setting `onSave` also rendered an inline-styled Save button into the title bar that a host could not remove; `onSave` is now just the action, and File -> Save still invokes it.
+  - @docx-editor.dev/i18n@2.1.3
+
+## 2.1.2
+
+### Patch Changes
+
+- 4fa91bd: Under the packaged `<DocxEditor>`, `.docx-editor` is now on the editor root and nowhere else. The toolbar, menu bar, navigation pane, context menu, viewport and page-number chip each added the class as their own Tailwind scope, which they only need when there is no scoped ancestor. A host rule like `.my-shell .docx-editor { height: 100% }` therefore also matched the toolbar. Composing from `DocxEditor.Root`, which renders no element, is unchanged: the parts still scope themselves.
+  - @docx-editor.dev/i18n@2.1.2
+
+## 2.1.1
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.1.1
+
+## 2.1.0
+
+### Minor Changes
+
+- c1a20c8: Composed chrome is legible and styled with zero configuration. Bare `DocxEditor.Toolbar`, `DocxEditor.Menu`, and `DocxEditor.ContextMenu` now resolve labels through the active locale catalogue (so `LocaleProvider` localizes them) instead of rendering raw i18n keys, and emit the `docx-editor` styling scope on their own root — matching `DocxEditor.Loading` — so they render styled wherever the host mounts them. New `useChromeTranslate(overrides?)` returns a catalogue-backed resolver assignable to every part's `t` prop, with a `Map` of key-level overrides consulted first. The `<DocxEditor>` `t` prop now also receives interpolation params, so host resolvers can format parameterized labels like the navigation match counter.
+- dbf5501: Every remaining `ep-` prefixed CSS class and keyframe is renamed to `docx-editor-`, so the whole stylesheet shares one namespace with the `.docx-editor` root class. If your own CSS targets an `.ep-*` class or the `ep-caret-blink` keyframe, switch it to the same name under `docx-editor-` (`.ep-one-surface__caret` becomes `.docx-editor-one-surface__caret`).
+- 43c3e6a: The shipped stylesheet is now precompiled and fully namespaced: every Tailwind utility, editable-surface rule and keyframe is scoped under the renamed `.docx-editor` root class (previously `.ep-root`), so the CSS no longer collides with a host app's Tailwind setup and styles the chrome correctly in hosts without Tailwind. If your own CSS targets `.ep-root`, switch it to `.docx-editor`.
+
+### Patch Changes
+
+- 9bba164: Keep page-relative anchored drawings paintable in multi-column sections by clipping them to the full page width instead of the active column.
+- 03f57f3: Chrome that describes the document no longer renders before one is present. The review rail keeps its empty state and host furniture off screen until a document opens instead of floating them over the loading screen, the ruler parts render nothing rather than default Letter-size ticks for a page that does not exist, and the navigation pane and document outline no longer report "no headings" about an absent document. The same applies after a parse failure or a detach, not only while loading. `useReview().ready` reports false until a document is present and the hook now re-derives when a load fails.
+- Updated dependencies [232728c]
+  - @docx-editor.dev/i18n@2.1.0
+
+## 2.0.1
+
+### Patch Changes
+
+- Updated dependencies [51f14f5]
+  - @docx-editor.dev/core@2.0.1
+  - @docx-editor.dev/i18n@2.0.1
+
+## 2.0.0
+
+### Major Changes
+
+- 26095c6: Initial release.
+
+  A WYSIWYG `.docx` editor that runs entirely in the browser: it opens a Word file, paints
+  the real paginated layout, edits it in place, and writes a `.docx` back out.
+  - `@docx-editor.dev/react` — the React adapter. `<DocxEditor document={bytes} />` for the
+    packaged editor, or compose `DocxEditor.Root` / `.Viewport` / `.Content` with the hooks
+    (`useEditorState`, `useEditorCommand`, `useDocxEditor`) to build your own chrome.
+  - `@docx-editor.dev/core` — the framework-agnostic engine: OPC/XML reading, the canonical
+    OOXML tree, layout, paint, and the `Editor` contract the adapters render.
+  - `@docx-editor.dev/i18n` — the shared string catalogue, with nine locales.
+  - `@docx-editor.dev/editor-api` — a batching document object model for automating a
+    document from a server or from an editor already open in a page.
+  - `@docx-editor.dev/pro` — tracked changes, comments, and custom nodes.
+
+  Word fidelity is structural: styles, theme colours, tables, headers and footers, section
+  layout, numbering, and tab stops resolve through the same cascade Word uses, and content
+  the editor does not model round-trips untouched.
+
+- 26095c6: Remove `EditorHost`, `EditorConfig` and `createEditor` from the public surface. They described a retired pipeline in which the adapter supplied DOM handles and a display sink; the editor has painted its own surface since `createDocxEditor` replaced it, and none of the three had a caller. Use `createDocxEditor` with `DocxEditorConfig`.
+
+### Minor Changes
+
+- 26095c6: Five additions to the customization surface, each one a gap a host had to work around:
+  - `DocxEditor.Review` takes a `t` label resolver, like every other compound, and a `card={{ className }}` for the card box itself.
+  - `DocxEditor.Review` accepts a render prop as its children, replacing the packaged card while keeping the rail's anchoring, stacking and virtualization.
+  - A custom node's review card honours the same part overrides as every other kind, and carries `data-node-name` so a theme can tell one definition's cards from another's.
+  - `DocxEditor.Menu.Group` and `DocxEditor.ContextMenu.Group` — a named section of rows with a real `role="group"` taking its heading as the accessible name.
+  - `useEditorCaret()` returns the caret as `{ paragraphId, offset }` — the shape the write APIs take as their `at`, and reference-stable so it can be captured in a handler.
+
+  An avatar with no author renders nothing rather than a blank disc, and rail `furniture` unmounts when the pane is shut — a closed rail is a 32px marker strip, and content laid out for the open column has nowhere to go in it.
+
+### Patch Changes
+
+- 26095c6: Document the whole public API surface. Every exported symbol in the engine, the pro modules, the font packages and the automation object model now carries TSDoc, and the generated API reference covers `@docx-editor.dev/core`, `/pro` and `/fonts` alongside the adapters it already described.
+- 26095c6: Insert › Table now inserts a table. Pick a size from the 6×6 grid and an empty table with visible borders lands at the caret, columns evenly dividing the page's text width, caret in the first cell. The Insert menu no longer carries an Image row — picture insertion stays available through the image toolbar control and `DocxEditor.Menu.ImageInsert`.
+- 26095c6: Resolve fonts on demand. `fonts` now also accepts a function, called once per load with the families the document actually declares, so only what a file needs is loaded. `googleFonts()` from `@docx-editor.dev/fonts/google` serves those families from a pinned, hash-checked catalog of 105 Google-hosted families, and `useFonts` gives React a stable `fonts` prop that never rebuilds the editor. App-supplied faces now also paint, through the same aliasing the engine already uses for embedded fonts.
+- 26095c6: Render pictures whose `pic:spPr` or `pic:blipFill` omit optional children. `a:xfrm`, the geometry group and the fill-mode group are all optional in ECMA-376, but each was being required, so a conforming picture was treated as unrecognised content and never drawn. Word writes all of them, which is why this only showed up on files from other producers.
+
+  Size the caret on an empty spaced paragraph to the text rather than the line box. Auto and at-least line spacing add their extra depth below the glyphs, so on a double-spaced empty paragraph the caret was drawn at the full height of the spaced box — about twice the height of the text about to be typed. The same measurement also fixes the highlight band a content control draws on such a line.
+
+- 26095c6: The review rail now measures its position from client rects, so a host that positions its own page wrapper no longer lands the cards on top of the document. Rail furniture no longer pushes every card down by its own height, a custom node's context-menu card wraps instead of stretching the whole menu, the editing-mode menu right-aligns to its pill so a toolbar-end control no longer opens off-screen, and submenu panels place themselves in client space rather than being clipped by the context menu's own scroller.
+- 26095c6: Stop an empty paragraph that carries a section break from producing a blank page. The paragraph mark holding a `w:sectPr` is the section break itself, so when it paints nothing it now stays on the page its section ended on instead of opening a sheet the following next-page section then leaves empty.
+- 26095c6: Published packages now ship a `THIRD_PARTY_NOTICES.md` reproducing the license of every third-party package bundled into their release artifacts.
+- 26095c6: Match Word's vertical pagination by excluding a font's external `hhea.lineGap` from shaped line boxes and allowing auto line-spacing depth below a final glyph band to cross the bottom text margin.
+- Updated dependencies [26095c6]
+- Updated dependencies [26095c6]
+- Updated dependencies [26095c6]
+- Updated dependencies [26095c6]
+- Updated dependencies [26095c6]
+- Updated dependencies [26095c6]
+  - @docx-editor.dev/core@2.0.0
+  - @docx-editor.dev/i18n@2.0.0
+
+## 1.10.0
+
+### Minor Changes
+
+- bca00eb: Footnotes are now editable in the live editor. Click into a footnote to place a caret, type, select, and delete just like body text; in suggesting mode footnote edits are tracked changes. Edits round-trip back into the Word document. Available in both the React and Vue adapters.
+
+### Patch Changes
+
+- 53ede3c: Anchor the hidden ProseMirror caret to the painted caret so CJK IME candidate windows appear near the visible insertion point.
+- Updated dependencies [00c015b]
+- Updated dependencies [a631be1]
+- Updated dependencies [7a03c16]
+- Updated dependencies [c1871b5]
+- Updated dependencies [18a686d]
+- Updated dependencies [dc3d694]
+- Updated dependencies [7a94b49]
+- Updated dependencies [53ede3c]
+- Updated dependencies [5e7120b]
+  - @docx-editor.dev/core@1.10.0
+  - @docx-editor.dev/agents@1.10.0
+  - @docx-editor.dev/i18n@1.10.0
+
+## 1.9.0
+
+### Patch Changes
+
+- f61435b: Harden `openPrintWindow` to build the print window via DOM APIs instead of `document.write`, so a crafted document title cannot break out into executable markup. The framework-agnostic print helpers are now exported from `@docx-editor.dev/core` as the single source of truth, and the React package re-exports them unchanged.
+- 791b132: Remove two potential slow-input denial-of-service paths in the React adapter. The data URL MIME parser now uses index math instead of a backtracking regex, and the toolbar test-id helper no longer scans across unmatched parentheses, so neither degrades on long crafted input.
+- Updated dependencies [4b47daf]
+- Updated dependencies [9144b69]
+- Updated dependencies [826aa32]
+- Updated dependencies [826aa32]
+- Updated dependencies [12c1f87]
+- Updated dependencies [7839ee9]
+- Updated dependencies [826aa32]
+- Updated dependencies [9454c9a]
+- Updated dependencies [f61435b]
+- Updated dependencies [28876a2]
+  - @docx-editor.dev/core@1.9.0
+  - @docx-editor.dev/i18n@1.9.0
+  - @docx-editor.dev/agents@1.9.0
+
+## 1.8.3
+
+### Patch Changes
+
+- 5ce3faa: Escape embedded font-family names before interpolating into the injected `@font-face` stylesheet, and build the print window via DOM APIs instead of `document.write` string concatenation. Prevents CSS injection and print-time XSS from crafted DOCX font names.
+- Updated dependencies [88a7650]
+- Updated dependencies [5ce3faa]
+- Updated dependencies [5eb0a43]
+- Updated dependencies [673e917]
+- Updated dependencies [74e36ef]
+- Updated dependencies [447d5b0]
+  - @docx-editor.dev/core@1.8.3
+  - @docx-editor.dev/agents@1.8.3
+  - @docx-editor.dev/i18n@1.8.3
+
+## 1.8.2
+
+### Patch Changes
+
+- 7811a73: Fix caret size and table insert button position when the editor is zoomed. Both are painted inside the zoomed page container, so their geometry is now normalized by the zoom factor instead of being scaled twice.
+
+  Fixes #928
+
+- Updated dependencies [4f183b3]
+- Updated dependencies [0c233db]
+- Updated dependencies [7811a73]
+  - @docx-editor.dev/core@1.8.2
+  - @docx-editor.dev/agents@1.8.2
+  - @docx-editor.dev/i18n@1.8.2
+
+## 1.8.1
+
+### Patch Changes
+
+- Updated dependencies [6047f84]
+  - @docx-editor.dev/core@1.8.1
+  - @docx-editor.dev/agents@1.8.1
+  - @docx-editor.dev/i18n@1.8.1
+
+## 1.8.0
+
+### Patch Changes
+
+- Updated dependencies [274e45f]
+- Updated dependencies [a1f4537]
+- Updated dependencies [27740e1]
+- Updated dependencies [114e83e]
+  - @docx-editor.dev/agents@1.8.0
+  - @docx-editor.dev/core@1.8.0
+  - @docx-editor.dev/i18n@1.8.0
+
+## 1.7.0
+
+### Minor Changes
+
+- c0923f7: Add `commentsSidebarOpen` and `onCommentsSidebarOpenChange` to `<DocxEditor>` for controlling the comments sidebar's visibility. When `commentsSidebarOpen` is set it becomes the source of truth; `onCommentsSidebarOpenChange` (React prop / Vue `comments-sidebar-open-change` event) fires whenever the editor wants to open or close it. Lets consumers that hide or replace the toolbar (`showToolbar={false}`) toggle the sidebar themselves, or open it programmatically. Omit both to keep the default self-managed behavior.
+- 6f51f47: Add `onOpen` and `showFileOpen` props so React consumers can route File > Open through their own import pipeline or hide the built-in Open action.
+- e0604af: Add a `showHelpMenu` prop to `<DocxEditor>` (default `true`) for hiding the Help menu in the menu bar. It is threaded through `ToolbarProps`, so the compound `<EditorToolbar.MenuBar />` API respects it too. Consumers that want File/Format/Insert without the Help menu can now pass `showHelpMenu={false}` instead of reaching for CSS overrides.
+
+### Patch Changes
+
+- 2bd49c2: Fix React toolbar toggle buttons losing their color on hover. The active (selected) button now keeps its dark fill on hover instead of showing a white icon over a near-transparent background, and inactive buttons get a visible hover background. These states are now owned by editor.css tokens rather than Tailwind utilities, which did not dedupe (cn is clsx-only).
+- 25dbfe9: Fix severe typing and undo/redo latency when editing large documents that contain many comments and tracked changes. Sidebar anchor positions were resolved with a full page scan per comment/suggestion, so an edit near the start of a long review document spent seconds remapping every anchor. The scan now resumes from the previously matched page, cutting start-of-document keystroke latency from seconds to well under the responsiveness budget. Fixes #896.
+- 421faf1: Support tracked changes (Suggesting mode) in headers and footers for both React and Vue components, including card positioning in the sidebar and command support.
+- edd0bc2: Add themeable document-scrollbar CSS variables and apply the styled scrollbar to both React and Vue document scroll containers.
+- Updated dependencies [ed04d10]
+- Updated dependencies [35b5cee]
+- Updated dependencies [186598a]
+- Updated dependencies [2dedf30]
+- Updated dependencies [dfd316f]
+- Updated dependencies [6b1897a]
+- Updated dependencies [8e95d60]
+- Updated dependencies [f2c9f9f]
+- Updated dependencies [fc95983]
+- Updated dependencies [edd0bc2]
+- Updated dependencies [d4a27d4]
+  - @docx-editor.dev/core@1.7.0
+  - @docx-editor.dev/agents@1.7.0
+  - @docx-editor.dev/i18n@1.7.0
+
+## 1.6.2
+
+### Patch Changes
+
+- 768b10e: Redesign the document outline toggle as a filled circular button in the left gutter (instead of a bare icon), tighten the outline panel's indentation, and keep the toggle and panel clear of the vertical ruler and of landscape pages.
+- Updated dependencies [a8bce7a]
+- Updated dependencies [768b10e]
+  - @docx-editor.dev/core@1.6.2
+  - @docx-editor.dev/agents@1.6.2
+  - @docx-editor.dev/i18n@1.6.2
+
+## 1.6.1
+
+### Patch Changes
+
+- Updated dependencies [7c1d1ff]
+- Updated dependencies [c25ba18]
+- Updated dependencies [26a048f]
+- Updated dependencies [74ae87d]
+- Updated dependencies [a89af59]
+- Updated dependencies [6550426]
+- Updated dependencies [4a75c5e]
+  - @docx-editor.dev/agents@1.6.1
+  - @docx-editor.dev/i18n@1.6.1
+  - @docx-editor.dev/core@1.6.1
+
+## 1.6.0
+
+### Minor Changes
+
+- a6a2dd0: Replace the Insert menu's "Page break" item with a "Break" submenu offering page break, section break (next page), and section break (continuous).
+- 5509418: Add a `colorMode` prop (`'light' | 'dark' | 'system'`) for native dark mode. Dark mode re-themes the editor chrome through the shared design tokens and renders the document canvas like Word's dark view: a dark page with light text where authored colours are lightness-inverted (hue preserved) for legibility. It is a display transform only; the saved DOCX is unchanged. `'system'` follows the OS `prefers-color-scheme`.
+- fae2765: Add a `watermarkPresets` prop to customize the text-watermark dialog's preset list. Pass an array of phrases to replace the built-in MS Word defaults (CONFIDENTIAL, DRAFT, …), or an empty array to hide the preset dropdown. Available in both React and Vue.
+
+### Patch Changes
+
+- 3a4a03f: Fix toolbar dropdowns closing when you scroll inside them. Scrolling the font size picker's preset list now keeps the dropdown open instead of dismissing it. Fixes #808.
+- bbda628: Apply selected font picker options by their primary family name so CSS fallback stacks like Lato, sans-serif do not get stored as document font names.
+- 7fe09f0: Share the paragraph-style-picker preview logic between the React and Vue toolbars. The filter/sort and per-style preview CSS now live once in `@docx-editor.dev/core/utils/stylePreview` (`resolveParagraphStyleOptions` + `getStylePreviewProps`), which both adapters call, so the style dropdown can no longer drift between them. Also fixes a Vue toolbar bug where typing a font size and then clicking a preset could re-commit the typed value over the preset.
+- 7fe09f0: Align the React and Vue toolbar controls. The Vue font-size control is now an editable, clearly-bordered input box (matching React) instead of a plain button, and React's zoom control is now a − / + stepper around the level dropdown (matching Vue), so both adapters present the same editable zoom and font-size controls.
+- 7fe09f0: Unify the editor UI colors onto one CSS-variable token palette. The canonical chrome stylesheet now lives in `@docx-editor.dev/core` (`packages/core/src/styles/editor.css`) and both adapters import it, so React and Vue can never drift. Component styles reference `--doc-*` tokens instead of hardcoded colors, and the shadcn HSL tokens are aligned to the same palette and support opacity modifiers. A commented `.ep-root.dark` scaffold is included as the structure for a future dark theme (no dark values are shipped yet — adding the `dark` class has no visual effect until they are filled in). Light-mode appearance is unchanged apart from minor consolidation of near-duplicate grays/blues. As part of this, the Vue full-screen loading overlay now uses the same dark backdrop with light text as React (previously a light backdrop), and the Vue editing-mode chip and toolbar dropdown elevation share React's hover/shadow tokens. The Vue toolbar buttons, dropdown triggers, menu items, and steppers now reference the same shadcn `foreground`/`muted-foreground`/`muted`/`border` tokens React uses (previously the `--doc-*` family), so the toolbar matches React in both light and dark mode; the dropdown triggers also render at React's normal weight (they previously looked bold), and the selected menu item uses React's grey highlight instead of an indigo tint.
+- Updated dependencies [a6a2dd0]
+- Updated dependencies [931931a]
+- Updated dependencies [fa3383b]
+- Updated dependencies [32c5382]
+- Updated dependencies [7fe09f0]
+- Updated dependencies [7fe09f0]
+- Updated dependencies [f50a3c7]
+- Updated dependencies [7fe09f0]
+  - @docx-editor.dev/agents@1.6.0
+  - @docx-editor.dev/core@1.6.0
+  - @docx-editor.dev/i18n@1.6.0
+
+## 1.5.0
+
+### Minor Changes
+
+- 19a25eb: Add `scrollToCommentId`, `scrollToChangeId`, and `highlightRange` methods to `DocxEditorRef` on both the React and Vue adapters, for revealing a location in the editor. Each scrolls the comment, tracked change, or position range into view and selects it so the selection overlay highlights the spot. `scrollToCommentId` and `scrollToChangeId` return `false` when the id no longer resolves, so callers can surface a "location no longer exists" affordance instead of silently doing nothing.
+
+### Patch Changes
+
+- ab38192: Support clickable inline Word checkbox content controls
+- ca275f9: Fix the document outline toggle rendering above the title bar File menu. The outline button now uses the shared `Z_INDEX.outline` layer (40) instead of 50, and the toolbar shell is raised to `Z_INDEX.toolbar` (100) so title-bar dropdowns stay on top. Vue parity: outline toggle at 40, toolbar shell at 100.
+- Updated dependencies [7d02ec1]
+- Updated dependencies [04130ef]
+- Updated dependencies [ab38192]
+- Updated dependencies [5cdfa5c]
+- Updated dependencies [335ad6c]
+- Updated dependencies [c5a4b1e]
+- Updated dependencies [c4fd221]
+- Updated dependencies [ca005c5]
+- Updated dependencies [7d6daeb]
+- Updated dependencies [5cdfa5c]
+- Updated dependencies [44161e5]
+  - @docx-editor.dev/core@1.5.0
+  - @docx-editor.dev/agents@1.5.0
+  - @docx-editor.dev/i18n@1.5.0
+
+## 1.4.0
+
+### Minor Changes
+
+- 1ab8b30: Image resize: drag a corner handle to scale (keeping aspect ratio) or an edge handle to stretch one side (width or height) and deliberately change the aspect ratio. Selection handles are now Word-style white dots. Inserted images keep their aspect ratio — a wide image dropped into a table cell or a narrow column now scales down to fit while staying in proportion, instead of squashing or overflowing the page. Fixes #266.
+
+### Patch Changes
+
+- Updated dependencies [28a521a]
+- Updated dependencies [1ab8b30]
+  - @docx-editor.dev/core@1.4.0
+  - @docx-editor.dev/agents@1.4.0
+  - @docx-editor.dev/i18n@1.4.0
+
+## 1.3.3
+
+### Patch Changes
+
+- bd704e2: Assign every paragraph a stable id when a document is opened, so block ids and `getSelectionInfo().paraId` work before the first edit. Previously a document without `w14:paraId` had null ids until you typed or added a comment. Fixes #738.
+- Updated dependencies [bf748c0]
+- Updated dependencies [15d4f39]
+- Updated dependencies [06fa96b]
+- Updated dependencies [bd704e2]
+- Updated dependencies [30df527]
+  - @docx-editor.dev/core@1.3.3
+  - @docx-editor.dev/agents@1.3.3
+  - @docx-editor.dev/i18n@1.3.3
+
+## 1.3.2
+
+### Patch Changes
+
+- Updated dependencies [3bd7bf7]
+- Updated dependencies [0ded2a1]
+- Updated dependencies [58e3a7e]
+  - @docx-editor.dev/core@1.3.2
+  - @docx-editor.dev/agents@1.3.2
+  - @docx-editor.dev/i18n@1.3.2
+
+## 1.3.1
+
+### Patch Changes
+
+- 3fe9c57: Share the layout pipeline across the React and Vue adapters. The Vue editor now renders multi-column section layouts with correct per-section column widths, coalesces a burst of keystrokes into one layout pass per frame, and no longer scrolls the page when you edit. React behavior is unchanged.
+- d100115: Fix blank render on documents whose header contains a page-anchored letterhead. The body now clears the header/footer based on in-flow content only, so anchored shapes and text boxes (which Word positions on the page) no longer push the body off the page. Fixes #705.
+- 66cf3a8: Share the React/Vue editor orchestration through core so both adapters stay in lockstep. Vue gains three behaviors it was missing: multi-cell selection highlighting, drag-to-edge auto-scroll while selecting, and correct comment/tracked-change ID allocation (IDs are no longer reused after a delete and no longer collide across the comment/revision space). Vue selection rectangles now also cover tab stops and hyperlink text. No public API changes.
+- Updated dependencies [3fe9c57]
+- Updated dependencies [d100115]
+- Updated dependencies [db75f4f]
+- Updated dependencies [66cf3a8]
+  - @docx-editor.dev/core@1.3.1
+  - @docx-editor.dev/agents@1.3.1
+  - @docx-editor.dev/i18n@1.3.1
+
+## 1.3.0
+
+### Patch Changes
+
+- 0d5beed: Fix long content in a table row getting cut off / hidden instead of flowing across pages. A table cell now measures its stacked paragraphs the way it paints them — collapsing adjacent paragraph before/after spacing (like Word) instead of adding it — so the row's height matches what's rendered and page breaks land on whole lines instead of slicing a line in two. Selecting text across a table that spans a page break no longer scatters selection highlights into the gap between pages, and contextual spacing is now suppressed inside table cells. Fixes #570.
+- Updated dependencies [15966fc]
+- Updated dependencies [2003cec]
+- Updated dependencies [5e51a9b]
+- Updated dependencies [cb5f622]
+- Updated dependencies [1be9cf5]
+- Updated dependencies [5fcca3b]
+- Updated dependencies [f73706e]
+- Updated dependencies [0d5beed]
+- Updated dependencies [5b38696]
+- Updated dependencies [15966fc]
+- Updated dependencies [f3d6861]
+- Updated dependencies [0f3eb97]
+- Updated dependencies [eaa6f7f]
+  - @docx-editor.dev/core@1.3.0
+  - @docx-editor.dev/agents@1.3.0
+  - @docx-editor.dev/i18n@1.3.0
+
+## 1.2.1
+
+### Patch Changes
+
+- Updated dependencies [a0adf60]
+- Updated dependencies [1c2b098]
+  - @docx-editor.dev/agents@1.2.1
+  - @docx-editor.dev/core@1.2.1
+  - @docx-editor.dev/i18n@1.2.1
+
+## 1.2.0
+
+### Minor Changes
+
+- 362a65f: Make block-level content controls (`w:sdt`) editable. Block structured document tags wrapping paragraphs or tables now convert to a dedicated ProseMirror node, so their content stays editable and the control survives the full edit cycle (previously it round-tripped on save but was flattened in the editor). The control boundary is drawn around its content in the paged view, and the region remains addressable by its tag/alias.
+- d791e05: Add content-control (SDT) methods to the editor ref. `getContentControls` lists block controls in the live document (filtered by tag/alias/id/type) with their text and position; `scrollToContentControl` brings one into view; `setContentControlContent` fills a control by tag (as a normal undoable edit); `removeContentControl` deletes or unwraps one. Locked controls are refused unless forced. Paired across the React and Vue adapters.
+- a60ed77: Add typed value setters for content controls. `setContentControlValue` (headless) and the `setContentControlValue` editor-ref method (React + Vue) set a dropdown selection, toggle a checkbox, or set a date by tag, updating both the visible content and the structured `w:sdtPr` state (dropdown `w:lastValue`, `w14:checked`, `w:date`'s `w:fullDate`). Validates the value against the control type and list items.
+- a60ed77: Support repeating sections (`w15:repeatingSection`) with add/remove, matching Word. `addRepeatingSectionItem`/`removeRepeatingSectionItem` (headless) clone an item with fresh unique ids or drop one (keeping at least one); the editor renders ＋/✕ affordances on each repeating item in React and Vue. Items round-trip losslessly.
+
+### Patch Changes
+
+- Updated dependencies [362a65f]
+- Updated dependencies [e30c763]
+- Updated dependencies [d791e05]
+- Updated dependencies [d791e05]
+- Updated dependencies [a60ed77]
+- Updated dependencies [bc67374]
+- Updated dependencies [a60ed77]
+  - @docx-editor.dev/core@1.2.0
+  - @docx-editor.dev/agents@1.2.0
+  - @docx-editor.dev/i18n@1.2.0
+
 ## 1.1.0
 
 ### Minor Changes
 
-- 9d7138e: Add `fonts` prop on `<DocxEditor>` for declarative custom font registration. Each entry injects an `@font-face` pointing at the URL you provide. Multiple entries can share `family` to register different weights. Fixes #620.
-
-  ```tsx
-  <DocxEditor
-    fonts={[
-      { family: 'Custom Sans', src: '/fonts/CustomSans-Regular.woff2' },
-      { family: 'Custom Sans', src: '/fonts/CustomSans-Bold.woff2', weight: 700 },
-    ]}
-  />
-  ```
-
-  For Google Fonts, keep using `loadFont(name)` from `@eigenpal/docx-editor-core/utils` — it loads the family from the Google Fonts CSS API directly:
-
-  ```ts
-  import { loadFont } from '@eigenpal/docx-editor-core/utils';
-  import { useEffect } from 'react';
-
-  useEffect(() => {
-    void loadFont('Pacifico');
-  }, []);
-  ```
-
-  Also exposes `loadFontFromUrl`, `loadFontDefinitions`, and the `FontDefinition` type from `@eigenpal/docx-editor-core/utils`.
-
-- 9d7138e: Font-load failures (Google Fonts, `loadFontFromUrl`, `loadFontFromBuffer`) now route through the React `onError` prop and the Vue `error` event instead of writing directly to the console. Wire either to pipe these into Sentry, Datadog, or your own error tracker. When no subscriber is attached (headless / SSR / pre-mount), the loader falls back to `console.warn` so errors are not silently dropped.
-
-  Adds `onFontError(callback)` to `@eigenpal/docx-editor-core/utils` for non-adapter hosts.
-
-- 42ea72d: Track structural edits as OOXML revisions in suggesting mode (fixes #614).
-
-  Authoring:
-  - Pressing Enter in suggesting mode marks the new paragraph break as
-    tracked (`<w:pPr><w:rPr><w:ins/>`); Backspace at paragraph start marks
-    the prior break as deleted (`<w:del/>`) without actually joining until
-    accepted.
-  - `addRowBelow` / `addRowAbove` / `deleteRow` in suggesting mode set
-    `trIns` / `trDel` plus mirroring `cellMarker` on each cell instead of
-    mutating the table structure.
-  - Editing paragraph properties in suggesting mode records a `pPrChange`
-    entry with the prior `ParagraphFormatting` snapshot.
-
-  Round-trip preservation:
-  - Paragraph-mark insertion / deletion (`<w:pPr><w:rPr><w:ins/></w:del/>`),
-    paragraph property changes (`<w:pPrChange>`), table row insertion /
-    deletion (`<w:trPr><w:ins/></w:del/>`), row property changes
-    (`<w:trPrChange>`), cell insertion / deletion / merge
-    (`<w:cellIns>`, `<w:cellDel>`, `<w:cellMerge>` with `w:vMerge` value
-    preserved), cell property changes (`<w:tcPrChange>`), table property
-    changes (`<w:tblPrChange>`) — all parse, round-trip, and re-emit per
-    the ECMA-376 schema (CT_PPrBase containment for `*Change` previous
-    snapshots, schema-mandated ordering, single `*Change` per parent,
-    no `w:rsid` on `CT_TrackChange` extensions).
-
-  Accept / Reject:
-  - New commands `acceptChangeById(id)` / `rejectChangeById(id)` resolve
-    any revision in one PM transaction. Per Word semantics: accept
-    `pPrIns` clears the marker; reject joins-with-next (resulting
-    paragraph inherits the second paragraph's `pPr`). Reject `pPrChange`
-    restores the prior properties onto the paragraph.
-  - `acceptAllChanges` / `rejectAllChanges` now resolve every revision
-    type (inline marks, paragraph-mark, paragraph-property, row, cell,
-    table-property), not just inline.
-
-  Sidebar:
-  - Existing TrackedChange sidebar surfaces every new revision type:
-    paragraphMarkInsertion, paragraphMarkDeletion, paragraphPropertiesChanged,
-    rowInserted, rowDeleted, rowPropertiesChanged, cellInserted, cellDeleted,
-    cellMerged, cellPropertiesChanged, tablePropertiesChanged. Accept /
-    Reject buttons route via `acceptChangeById` / `rejectChangeById`. React
-    and Vue cards both i18n-localized (15 new `revisions.*` keys across
-    all 7 locales). Multi-site revisions (row + N cells under one
-    `(id, author, date)` triple) collapse to a single sidebar entry.
-
-  Painter:
-  - Pilcrow ¶ glyph at end of revised paragraphs (insertion green,
-    deletion red strikethrough); vertical margin change-bar; colored
-    row/cell borders for trIns/trDel/cellMarker; dashed boundary for
-    unaccepted vertical cellMerge. Painter styles live in
-    `@eigenpal/docx-editor-core/prosemirror/editor.css` and both adapters
-    inherit (React + Vue parity).
-
-  What's NOT yet covered (follow-up PRs):
-  - `<w:sectPrChange>` (section property revisions)
-  - `<w:rPr><w:rPrChange>` paragraph-mark formatting (CT_ParaRPrChange,
-    distinct from run rPrChange)
-  - `<w:moveFrom>` / `<w:moveTo>` round-trip
-  - `<w:numPr><w:ins/>` (numbered-list assignment tracking)
-  - Suggesting-aware `addColumnLeft` / `addColumnRight` / `deleteColumn`
-    (TODOs in source reference the spec)
-  - Agents-package surface for the new structural-revision fields
-  - Collaboration / multi-author conflict semantics (single-user only)
-
-  OOXML conformance audit, code review, and simplification pass have
-  been folded back into this branch; see PR #616 for the per-phase
-  review history.
+- 9d7138e: Add a `fonts` prop on `<DocxEditor>` for declarative custom-font registration — each entry injects an `@font-face` from the URL you provide, and entries sharing a `family` register different weights. Also exposes `loadFontFromUrl`, `loadFontDefinitions`, and the `FontDefinition` type from `@docx-editor.dev/core/utils`. Fixes #620.
+- 9d7138e: Font-load failures now route through the React `onError` prop and the Vue `error` event instead of the console, so you can forward them to your own error tracker; with no subscriber attached they fall back to `console.warn`. Adds `onFontError(callback)` to `@docx-editor.dev/core/utils` for non-adapter hosts.
+- 42ea72d: Track structural edits as OOXML revisions in suggesting mode. Paragraph-break insert/delete, paragraph-property changes, and table row/cell insert/delete/merge are now recorded, round-tripped through DOCX, and shown in the tracked-changes sidebar (React and Vue, localized). Adds `acceptChangeById(id)` / `rejectChangeById(id)`, and `acceptAllChanges` / `rejectAllChanges` now resolve every revision type rather than inline marks only. Fixes #614.
 
 ### Patch Changes
 
-- 371dbaf: Fix Find navigation in the paged editor. Matches are now searched against the live document so they map to current editor positions, the visible page scrolls to the active match, and pressing Enter advances through results instead of snapping back to the first. The Vue adapter routes find scrolling through the same visible-page path. Fixes #321.
+- 371dbaf: Fix Find navigation in the paged editor: matches now map to live document positions, the page scrolls to the active match, and Enter advances through results instead of snapping back to the first. Fixes #321.
 - 79c68b0: Fix hyperlink popup text and URL inputs being uneditable. The editor container's focus and keydown handlers were redirecting focus to the document, so the popup inputs could never hold focus or accept typing.
 - Updated dependencies [14fe4f2]
 - Updated dependencies [9d7138e]
+- Updated dependencies [7e77654]
+- Updated dependencies [bf11ee8]
 - Updated dependencies [30c1931]
 - Updated dependencies [9d7138e]
+- Updated dependencies [7a91813]
 - Updated dependencies [a7f9ac5]
 - Updated dependencies [42ea72d]
 - Updated dependencies [ebb85a5]
+- Updated dependencies [137d5de]
 - Updated dependencies [e5e0997]
-  - @eigenpal/docx-editor-i18n@1.1.0
-  - @eigenpal/docx-editor-core@1.1.0
-  - @eigenpal/docx-editor-agents@1.1.0
+  - @docx-editor.dev/i18n@1.1.0
+  - @docx-editor.dev/core@1.1.0
+  - @docx-editor.dev/agents@1.1.0
 
 ## 1.0.3
 
@@ -122,7 +490,7 @@
 
 - 3e4b98e: Fix inline-image header lines to match Word. A line with a tall inline logo plus short text now baseline-aligns the label with the image bottom instead of centering it in an inflated line box, so it hugs the paragraph border. Inline images also honor their `wp:inline` distT/distB wrap distances, which previously only the block-image path applied.
 - 0a93cc3: Internal: co-locate the Tailwind library config inside `packages/react/`. No runtime change.
-- 6d56181: Vue now renders documents with stacked floating objects identically to React. Previously, the Vue composable ran a simplified measurement pipeline without floating-zone awareness, so anchored images / floating textboxes / floating tables would not push body text below them in Vue. The float-extraction and per-block orchestration is now shared from `@eigenpal/docx-editor-core/layout-bridge` (`measureBlocksWithFloats`); both adapters call it with their own per-block measure callback.
+- 6d56181: Vue now renders documents with stacked floating objects identically to React. Previously, the Vue composable ran a simplified measurement pipeline without floating-zone awareness, so anchored images / floating textboxes / floating tables would not push body text below them in Vue. The float-extraction and per-block orchestration is now shared from `@docx-editor.dev/core/flow-model` (`measureBlocksWithFloats`); both adapters call it with their own per-block measure callback.
 - e80093d: Body text now flows around stacked floating objects correctly. Documents with a side-anchored textbox plus an image floating to the right, or with a floating table whose width fills the page, used to render body paragraphs at full content width on top of the floats, push tables to the page top, or collapse the first paragraph to a single glyph per line. All three cases now match Word's layout.
 - Updated dependencies [24b31a4]
 - Updated dependencies [ec36a50]
@@ -131,9 +499,9 @@
 - Updated dependencies [bdd7f50]
 - Updated dependencies [6d56181]
 - Updated dependencies [e80093d]
-  - @eigenpal/docx-editor-core@1.0.3
-  - @eigenpal/docx-editor-agents@1.0.3
-  - @eigenpal/docx-editor-i18n@1.0.3
+  - @docx-editor.dev/core@1.0.3
+  - @docx-editor.dev/agents@1.0.3
+  - @docx-editor.dev/i18n@1.0.3
 
 ## 1.0.2
 
@@ -147,24 +515,24 @@
 
 - ba67554: Render PAGE/NUMPAGES/DATE field results with their own run formatting. The layout bridge dropped the field node's character marks, so a page number in a footer painted at the default font size and color instead of the footer run's.
 - Updated dependencies [4e73af5]
-  - @eigenpal/docx-editor-core@1.0.2
-  - @eigenpal/docx-editor-agents@1.0.2
-  - @eigenpal/docx-editor-i18n@1.0.2
+  - @docx-editor.dev/core@1.0.2
+  - @docx-editor.dev/agents@1.0.2
+  - @docx-editor.dev/i18n@1.0.2
 
 ## 1.0.1
 
 ### Patch Changes
 
-- fe4cb94: Add per-locale subpath imports to `@eigenpal/docx-editor-i18n` so dynamic
+- fe4cb94: Add per-locale subpath imports to `@docx-editor.dev/i18n` so dynamic
   locale loading can code-split a single locale instead of bundling the whole
   set:
 
   ```ts
   // Static — bundler ships only this locale's strings
-  import pl from '@eigenpal/docx-editor-i18n/pl';
+  import pl from '@docx-editor.dev/i18n/pl';
 
   // Dynamic — splits into its own chunk, loaded on demand
-  const pl = (await import('@eigenpal/docx-editor-i18n/pl')).default;
+  const pl = (await import('@docx-editor.dev/i18n/pl')).default;
   ```
 
   Subpaths ship for every locale: `/en`, `/de`, `/he`, `/pl`, `/pt-BR`, `/tr`,
@@ -172,24 +540,24 @@
   ergonomic path for static lists, the subpath for runtime locale switching.
 
   Also re-export `createEmptyDocument`, `createDocumentWithText`, and
-  `CreateEmptyDocumentOptions` from `@eigenpal/docx-editor-react` and
-  `@eigenpal/docx-editor-vue` so the common "spawn a blank editor"
+  `CreateEmptyDocumentOptions` from `@docx-editor.dev/react` and
+  `@docx-editor.dev/vue` so the common "spawn a blank editor"
   affordance no longer requires installing `-core` alongside the adapter.
 
   Surface `Comment`, `CommentRangeStart`, `CommentRangeEnd`,
   `TrackedChangeInfo`, `TrackedRunChange`, `Insertion`, `Deletion`,
   `MoveFrom`, `MoveTo`, and `ParagraphContent` from the main
-  `@eigenpal/docx-editor-core` entry. They were already public via
-  `@eigenpal/docx-editor-core/headless`; the main entry just hadn't been
+  `@docx-editor.dev/core` entry. They were already public via
+  `@docx-editor.dev/core/headless`; the main entry just hadn't been
   re-exporting them.
 
 - Updated dependencies [8d60d65]
 - Updated dependencies [7806b78]
 - Updated dependencies [a193caa]
 - Updated dependencies [fe4cb94]
-  - @eigenpal/docx-editor-core@1.0.1
-  - @eigenpal/docx-editor-i18n@1.0.1
-  - @eigenpal/docx-editor-agents@1.0.1
+  - @docx-editor.dev/core@1.0.1
+  - @docx-editor.dev/i18n@1.0.1
+  - @docx-editor.dev/agents@1.0.1
 
 ## 1.0.0
 
@@ -201,25 +569,25 @@
 
   ## Package restructure (breaking)
 
-  | Old import                                 | New import                                |
-  | ------------------------------------------ | ----------------------------------------- |
-  | `@eigenpal/docx-js-editor`                 | `@eigenpal/docx-editor-react`             |
-  | `@eigenpal/docx-js-editor/react`           | `@eigenpal/docx-editor-react`             |
-  | `@eigenpal/docx-editor-react/core`         | `@eigenpal/docx-editor-core`              |
-  | `@eigenpal/docx-editor-react/headless`     | `@eigenpal/docx-editor-core/headless`     |
-  | `@eigenpal/docx-editor-react/core-plugins` | `@eigenpal/docx-editor-core/core-plugins` |
-  | `@eigenpal/docx-editor-react/mcp`          | `@eigenpal/docx-editor-agents/mcp`        |
-  | `@eigenpal/docx-editor-react/i18n/*.json`  | `@eigenpal/docx-editor-i18n/*.json`       |
+  | Old import                            | New import                           |
+  | ------------------------------------- | ------------------------------------ |
+  | `@eigenpal/docx-js-editor`            | `@docx-editor.dev/react`             |
+  | `@eigenpal/docx-js-editor/react`      | `@docx-editor.dev/react`             |
+  | `@docx-editor.dev/react/core`         | `@docx-editor.dev/core`              |
+  | `@docx-editor.dev/react/headless`     | `@docx-editor.dev/core/headless`     |
+  | `@docx-editor.dev/react/core-plugins` | `@docx-editor.dev/core/core-plugins` |
+  | `@docx-editor.dev/react/mcp`          | `@docx-editor.dev/agents/mcp`        |
+  | `@docx-editor.dev/react/i18n/*.json`  | `@docx-editor.dev/i18n/*.json`       |
 
   The old `@eigenpal/docx-js-editor` package stays on 0.x for legacy maintenance — no 1.x compatibility shim ships. Framework-agnostic utilities (e.g. `createEmptyDocument`) move to core:
 
   ```diff
   - import { DocxEditor, createEmptyDocument } from '@eigenpal/docx-js-editor';
-  + import { DocxEditor } from '@eigenpal/docx-editor-react';
-  + import { createEmptyDocument } from '@eigenpal/docx-editor-core';
+  + import { DocxEditor } from '@docx-editor.dev/react';
+  + import { createEmptyDocument } from '@docx-editor.dev/core';
   ```
 
-  ## Vue 3 adapter (`@eigenpal/docx-editor-vue`)
+  ## Vue 3 adapter (`@docx-editor.dev/vue`)
 
   The Vue package becomes a real adapter (previously a stub). Public API mirrors React:
   - `<DocxEditor>` with matching prop surface
@@ -228,28 +596,28 @@
 
   Parity gates cover insert-table, find/replace, page-setup, context menus, image overlay (resize/move/rotate/aspect-locked corners, dimension tooltip), advanced cell/row options (margins, height rule, text direction, no-wrap), menu-bar icons + shortcuts + carets, toolbar pickers, and the agent UI surface.
 
-  ## Shared i18n package (`@eigenpal/docx-editor-i18n`)
+  ## Shared i18n package (`@docx-editor.dev/i18n`)
 
-  Locale strings move out of `@eigenpal/docx-editor-react` into a dedicated package consumed by both adapters from a single source.
+  Locale strings move out of `@docx-editor.dev/react` into a dedicated package consumed by both adapters from a single source.
 
   ```diff
-  - import de from '@eigenpal/docx-editor-react/i18n/de.json';
-  + import de from '@eigenpal/docx-editor-i18n/de.json';
+  - import de from '@docx-editor.dev/react/i18n/de.json';
+  + import de from '@docx-editor.dev/i18n/de.json';
   ```
 
   The `defaultLocale` value (English) is still re-exported from the adapter packages, unchanged.
 
   ## Agent UI relocation (breaking)
 
-  `AgentPanel`, `AgentChatLog`, `AgentComposer`, `AgentSuggestionChip`, `AgentTimeline` no longer ship from `@eigenpal/docx-editor-react`. They live at:
-  - `@eigenpal/docx-editor-agents/react` — React components + `useAgentChat`
-  - `@eigenpal/docx-editor-agents/vue` — Vue 3 twins, plus `AIContextMenu` and `AIResponsePreview`
-  - `@eigenpal/docx-editor-agents/ai-sdk/react` / `/ai-sdk/vue` — `@ai-sdk/*` adapters
-  - `@eigenpal/docx-editor-agents/bridge` — React-free `createEditorBridge`, `agentTools`, `executeToolCall`, `getToolSchemas`, `createReviewerBridge`. Safe for headless / Vue / Node.
+  `AgentPanel`, `AgentChatLog`, `AgentComposer`, `AgentSuggestionChip`, `AgentTimeline` no longer ship from `@docx-editor.dev/react`. They live at:
+  - `@docx-editor.dev/agents/react` — React components + `useAgentChat`
+  - `@docx-editor.dev/agents/vue` — Vue 3 twins, plus `AIContextMenu` and `AIResponsePreview`
+  - `@docx-editor.dev/agents/ai-sdk/react` / `/ai-sdk/vue` — `@ai-sdk/*` adapters
+  - `@docx-editor.dev/agents/bridge` — React-free `createEditorBridge`, `agentTools`, `executeToolCall`, `getToolSchemas`, `createReviewerBridge`. Safe for headless / Vue / Node.
 
   ```diff
-  - import { AgentPanel, AgentChatLog } from '@eigenpal/docx-editor-react';
-  + import { AgentPanel, AgentChatLog } from '@eigenpal/docx-editor-agents/react';
+  - import { AgentPanel, AgentChatLog } from '@docx-editor.dev/react';
+  + import { AgentPanel, AgentChatLog } from '@docx-editor.dev/agents/react';
   ```
 
   The agent components no longer call `useTranslation` directly — pass localized `*Label` props instead. `<DocxEditor>`'s built-in agent panel slot still forwards localized strings automatically.
@@ -281,9 +649,9 @@
 
   ## License moves to Apache 2.0
 
-  All published packages relicense to Apache 2.0. Notably: `@eigenpal/docx-editor-agents` was AGPL-3.0-or-later — the relicense lifts copyleft obligations on agent embedders.
+  All published packages relicense to Apache 2.0. Notably: `@docx-editor.dev/agents` was AGPL-3.0-or-later — the relicense lifts copyleft obligations on agent embedders.
 
-- fd1f9de: `@eigenpal/docx-editor-i18n` ships its public surface as named exports from the package root. One import path, IDE-discoverable, tree-shakeable.
+- fd1f9de: `@docx-editor.dev/i18n` ships its public surface as named exports from the package root. One import path, IDE-discoverable, tree-shakeable.
 
   ```ts
   import {
@@ -302,7 +670,7 @@
     type Translations,
     type TranslationKey,
     type LocaleCode,
-  } from '@eigenpal/docx-editor-i18n';
+  } from '@docx-editor.dev/i18n';
   ```
 
   `en` is typed as `LocaleStrings` (source of truth, 100% coverage). Every other locale is `PartialLocaleStrings` (null leaves fall back to English). Hyphenated locale codes use camelCase identifiers (`ptBR`, `zhCN`); the `locales` record keeps BCP-47 keys (`'pt-BR'`, `'zh-CN'`) for runtime lookup.
@@ -325,7 +693,7 @@
 - cff5be4: Internal refactor: continue the DocxEditor.tsx cap effort by splitting the JSX render tree. Two new child components: DocxEditorToolbar (wraps the EditorToolbar with its 30+ props plus the title-bar slots and trailing extras) and DocxEditorPagedArea (PagedEditor mount, sidebar overlay, floating add-comment button, inline header/footer editor). DocxEditor.tsx 1972 → 1815 LOC. No public API change.
 - 6ff5d22: Internal refactor: split DocxEditor.tsx (5158 → 3712 LOC, -28%) into focused hooks under `components/DocxEditor/hooks/` — useOutlineSidebar, useKeyboardShortcuts, useFileIO, usePageSetupControls, useHyperlinkActions, useFindReplaceBridge, useFormattingActions, useImageActions — plus 6 micro-components (CommentsSidebarToggle, LocalizedAgentPanel, PageIndicator, AgentPanelToggle, OutlineToggleButton, EditingModeDropdown) and a `commentFactories` module that hides the shared comment/revision ID counter behind getNextCommentId/bumpNextCommentIdAbove helpers. No public API change.
 - 999a48d: Internal refactor: split PagedEditor.tsx (3230 → 775 LOC) into focused hooks under `components/DocxEditor/hooks/` — useLayoutPipeline, useSelectionOverlay, useImageInteractions, usePagedScrollApi, usePagesPointer, usePagedEditorRefApi, useLayoutTriggers — plus pure helpers domSelection.ts + tableResize.ts. No public API change.
-- 348fa6b: API Extractor snapshots for the 6 published subpaths of `@eigenpal/docx-editor-react` (root, `/ui`, `/hooks`, `/dialogs`, `/plugin-api`, `/styles`) and `@eigenpal/docx-editor-vue` (root, `/ui`, `/composables`, `/dialogs`, `/plugin-api`, `/styles`). CI now fails on undocumented public-surface drift via `bun run api:check`.
+- 348fa6b: API Extractor snapshots for the 6 published subpaths of `@docx-editor.dev/react` (root, `/ui`, `/hooks`, `/dialogs`, `/plugin-api`, `/styles`) and `@docx-editor.dev/vue` (root, `/ui`, `/composables`, `/dialogs`, `/plugin-api`, `/styles`). CI now fails on undocumented public-surface drift via `bun run api:check`.
 
   Adds `etc/parity.contract.json` — the cross-adapter parity contract listing which `DocxEditorProps` fields and `DocxEditorRef` members are paired between React and Vue, which are deliberately deferred in Vue, and which are Vue-exclusive. `bun run check:parity-contract` (also gated in CI) parses both snapshots and fails on any drift the contract doesn't acknowledge. Adding a new prop or ref method to either adapter forces an explicit classification in the contract.
 
@@ -333,7 +701,7 @@
 
   Vue's `useTableSelection` no longer exposes `manager: TableSelectionManager` in its return — it was unused by any internal consumer and leaked core's `TableSelectionManager` class as part of Vue's public surface.
 
-  Side effect for `@eigenpal/docx-editor-vue`: the build no longer writes workspace-relative source paths (e.g. `../../core/src/core.ts`) into published declarations. Those paths were valid in this repo but unresolvable once installed from npm; setting `pathsToAliases: false` on the dts plugin keeps the package names (`@eigenpal/docx-editor-core`, `@eigenpal/docx-editor-i18n`) intact in `dist/*.d.ts`.
+  Side effect for `@docx-editor.dev/vue`: the build no longer writes workspace-relative source paths (e.g. `../../core/src/core.ts`) into published declarations. Those paths were valid in this repo but unresolvable once installed from npm; setting `pathsToAliases: false` on the dts plugin keeps the package names (`@docx-editor.dev/core`, `@docx-editor.dev/i18n`) intact in `dist/*.d.ts`.
 
   No runtime change for either package.
 
@@ -354,9 +722,9 @@
 - Updated dependencies [f7b8dc7]
 - Updated dependencies [b2230a3]
 - Updated dependencies [8836214]
-  - @eigenpal/docx-editor-core@1.0.0
-  - @eigenpal/docx-editor-agents@1.0.0
-  - @eigenpal/docx-editor-i18n@1.0.0
+  - @docx-editor.dev/core@1.0.0
+  - @docx-editor.dev/agents@1.0.0
+  - @docx-editor.dev/i18n@1.0.0
 
 ## 0.5.1
 
@@ -370,7 +738,7 @@
 
 ### Minor Changes
 
-- 5fddb75: Image layout modes (Word-style): right-click image menu and toolbar dropdown now share five directional options (In Line with Text · Square Left · Square Right · Behind Text · In Front of Text) plus Cut/Copy/Paste/Delete. Inline ↔ anchor transitions promote inline images to anchored floats at the same rendered position (Word's behavior) and back, with full OOXML round-trip. Layout helpers (`hitTestImage`, `captureInlinePositionEmu`, `deriveLayoutChoice`, `IMAGE_LAYOUT_OPTIONS`, `toolbarValueToLayoutTarget`) are exported from `@eigenpal/docx-core/layout-painter` so framework adapters share them.
+- 5fddb75: Image layout modes (Word-style): right-click image menu and toolbar dropdown now share five directional options (In Line with Text · Square Left · Square Right · Behind Text · In Front of Text) plus Cut/Copy/Paste/Delete. Inline ↔ anchor transitions promote inline images to anchored floats at the same rendered position (Word's behavior) and back, with full OOXML round-trip. Layout helpers (`pointerTargetResolveImage`, `captureInlinePositionEmu`, `deriveLayoutChoice`, `IMAGE_LAYOUT_OPTIONS`, `toolbarValueToLayoutTarget`) are exported from `@eigenpal/docx-core/painter-model` so framework adapters share them.
 - c605277: Close 16 OOXML rendering gaps from the post-PR-#421 audit (#423): vertical anchor `align`, the six unhandled `relativeFrom` variants, bare `wp:positionH/V`, image crop (`wp:srcRect`), transparency (`a:alphaModFix`), `wp:effectExtent` shadow padding, rotation pivot, `layoutInCell` / `allowOverlap` round-trip, `w:vanish` / `w:rtl` / `w:effect` per-run, `w:trHeight hRule="exact"` enforcement, and `w:noWrap` on cells. `w:framePr` and `w:cols`-with-anchored-images are preserved on round-trip; visual rendering of those is left as a documented follow-up.
 
 ### Patch Changes
@@ -392,7 +760,7 @@
 
 - 5fd14f9: Fix selection highlights bleeding from body into headers and footers. When body and header content shared low PM positions (because each is parsed as a separate ProseMirror document), the DOM-based selection painter matched both trees and drew phantom rectangles on every header and footer. Selection rectangles and caret lookups are now scoped to `.layout-page-content`.
 - 11abc2d: Four header/footer fidelity follow-ups from the unification refactor:
-  - **#379** — `RenderContext.positioning` controls renderer outer position. `renderTableFragment` and `renderParagraphFragment` now pick `position: absolute` vs `position: relative` based on context, so HF / textbox callers don't have to flip inline styles after the fact. Removes the post-render `style.position` flips at three call sites.
+  - **#379** — `RenderContext.positioning` controls renderer outer position. `paintTableFragment` and `paintParagraphFragment` now pick `position: absolute` vs `position: relative` based on context, so HF / textbox callers don't have to flip inline styles after the fact. Removes the post-render `style.position` flips at three call sites.
   - **#380** — Inline-vs-inherited paragraph spacing strip. `normalizeHeaderFooterMeasureBlocks` now strips `spaceBefore` / `spaceAfter` ONLY when they were resolved from a paragraph style (e.g. Normal's default 8pt-after) and not specified inline on the HF paragraph itself. Inline `<w:spacing>` is preserved per ECMA-376 §17.3.1.33; previously the blanket strip collapsed intentional Word spacing.
   - **#381** — Trailing empty paragraph after a table renders at zero height. OOXML requires a trailing block-level element after the last `<w:tbl>` (the canonical convention is an empty `<w:p/>`). Word renders that paragraph as a zero-height anchor; we previously added `~14pt` of phantom space. The new `suppressEmptyParagraphHeight` flag on `ParagraphAttrs` opts the empty paragraph out of the default empty-line height fallback during measurement, while keeping the block itself for click-to-position.
   - **#382** — Floating tables (`<w:tblpPr>`) honor `tblpX` / `tblpY` in headers/footers. New `resolveHeaderFooterFloatingTablePosition` resolves the anchor (`page` / `margin` / `text`) per ECMA-376 §17.4.57 and positions the table at the requested coordinates instead of inline at `cursorY`. Floating tables don't advance `cursorY` — surrounding HF blocks flow as if the table weren't there, matching Word's no-wrap behavior.
@@ -403,18 +771,18 @@
 
 - 0d3581d: Set package homepage to https://docx-editor.dev/.
 - 4e194d7: Inline images in table cells now have visual breathing room. Previously when an image was taller than the parent paragraph's text line height, the line height was overwritten with the bare image height — so an image alone in a table cell rendered flush with the cell borders. Word treats an inline image as a tall glyph sitting on the text baseline: the image extends above the baseline (full ascent) and the line still reserves the parent font's normal descent + leading below. The line now grows to image-height + text-line-height, giving cells natural padding around image-dominant lines.
-- e12c337: Footnote rendering now routes through the body pipeline (`footnoteToProseDoc → toFlowBlocks → measureBlocks`), eliminating the shadow stack in `footnoteLayout.ts`. Footnotes inherit the full block-kind support of the body — paragraph, table, image, textBox, fields. Pre-PR a footnote that contained a table silently dropped the table; same for inline images and PAGE/NUMPAGES fields.
+- e12c337: Footnote rendering now routes through the body pipeline (`footnoteToProseDoc → buildBoxTree → measureBlocks`), eliminating the shadow stack in `footnoteLayout.ts`. Footnotes inherit the full block-kind support of the body — paragraph, table, image, textBox, fields. Pre-PR a footnote that contained a table silently dropped the table; same for inline images and PAGE/NUMPAGES fields.
 
   The fix mirrors the header/footer unification (#356/#357/#358):
   - **Parser:** `parseFootnote` and `parseEndnote` now walk all child blocks (`<w:p>` + `<w:tbl>`) in document order. The `Footnote.content` and `Endnote.content` types widen from `Paragraph[]` to `(Paragraph | Table)[]` to match the body / HeaderFooter / TableCell shape and reflect ECMA-376 §17.11.10.
   - **Converter:** new `footnoteToProseDoc` next to `headerFooterToProseDoc`; takes `(Paragraph | Table)[]` and produces a PM doc using the same `convertParagraphWithTextBoxes` / `convertTable` machinery the body uses.
-  - **Render adapter:** `convertFootnoteToContent` and `buildFootnoteContentMap` move from `core/layout-bridge/footnoteLayout.ts` to `react/.../PagedEditor.tsx`, parallel to `convertHeaderFooterToContent`. Footnote-specific presentation (default 8pt font, prepended display number as superscript) lives as a small post-process layer (`applyFootnotePresentation`).
+  - **Render adapter:** `convertFootnoteToContent` and `buildFootnoteContentMap` move from `core/flow-model/footnoteLayout.ts` to `react/.../PagedEditor.tsx`, parallel to `convertHeaderFooterToContent`. Footnote-specific presentation (default 8pt font, prepended display number as superscript) lives as a small post-process layer (`applyFootnotePresentation`).
   - **Cleanup:** `footnoteLayout.ts` shrinks from 293 lines to ~80 — only the page-mapping helpers remain (`collectFootnoteRefs`, `mapFootnotesToPages`, `calculateFootnoteReservedHeights`).
 
   Refs #378.
 
-- 4aee2e0: Consolidate body-scoped `data-pm-start` DOM lookups behind `findBodyPmSpans` / `findBodyEmptyRuns` / `findBodyPmAnchors` / `findBodyPmAnchor` helpers in `@eigenpal/docx-core/layout-bridge`. Removes the lingering risk that body-only operations (caret resolution, selection painting, scroll restore, image `NodeSelection` lookup, sidebar anchor positioning, visual-line navigation) accidentally match a header or footer run whose ProseMirror position collides with a body position. Same bug class as #391; this finishes the cleanup started in #406.
-- 274d858: Run-level OOXML attributes that were already parsed and held as ProseMirror marks now reach the painted DOM. The layout-bridge's `extractRunFormatting` had no `case` arm for several run-level marks, so the visible renderer silently dropped them while the hidden ProseMirror `toDOM` rendered them correctly:
+- 4aee2e0: Consolidate body-scoped `data-doc-from` DOM lookups behind `collectBodySpans` / `findBodyEmptyRuns` / `findBodyPmAnchors` / `findBodyPmAnchor` helpers in `@eigenpal/docx-core/flow-model`. Removes the lingering risk that body-only operations (caret resolution, selection painting, scroll restore, image `NodeSelection` lookup, sidebar anchor positioning, visual-line navigation) accidentally match a header or footer run whose ProseMirror position collides with a body position. Same bug class as #391; this finishes the cleanup started in #406.
+- 274d858: Run-level OOXML attributes that were already parsed and held as ProseMirror marks now reach the painted DOM. The flow-model's `extractRunFormatting` had no `case` arm for several run-level marks, so the visible renderer silently dropped them while the hidden ProseMirror `toDOM` rendered them correctly:
   - **`w:caps` (§17.3.2.4) — `allCaps`** — uppercase styling on heading runs is no longer lowercased.
   - **`w:smallCaps` (§17.3.2.32) — `smallCaps`** — small-caps styling reaches the painted DOM.
   - **`w:position` (§17.3.2.24)** — baseline shift in half-points now applies as `vertical-align`.
@@ -425,7 +793,7 @@
 
   Refs #410.
 
-  Also propagates the cosmetic-effect marks (`emboss`, `imprint`, `textShadow`, `textOutline`, `emphasisMark`) which were the same defect class — PM marks parsed correctly but the layout-bridge had no `case` arm, so painted runs lost the effect. Each maps to the same CSS recipe the hidden PM `toDOM` uses, so editable + painted views stay visually identical.
+  Also propagates the cosmetic-effect marks (`emboss`, `imprint`, `textShadow`, `textOutline`, `emphasisMark`) which were the same defect class — PM marks parsed correctly but the flow-model had no `case` arm, so painted runs lost the effect. Each maps to the same CSS recipe the hidden PM `toDOM` uses, so editable + painted views stay visually identical.
 
   Adjacent fix for #392: paragraph runs without an explicit `fontFamily` mark now inherit the paragraph's resolved style font (from the basedOn → docDefaults cascade) instead of falling back to the painter's hardcoded Calibri stack. Same mechanism applies to `fontSize` — runs that don't override fall through to the paragraph's resolved default. Closes the per-run side of the rFonts cascade gap from #412.
 
@@ -441,9 +809,9 @@
 
   Refs #412.
 
-- 4e194d7: Three Word-fidelity fixes surfaced by the Metal Nobre "DC_Template_Descricao_Cargo" template:
+- 4e194d7: Three Word-fidelity fixes surfaced by a customer job-description template:
   - **Inline images no longer overflow their containing line.** Browsers compute a non-integer height for `<img>` from the natural aspect ratio when only `width`/`height` attributes are set, which clipped images sized in EMU (e.g. wp:extent `1771650×278918` rounds to `186×29` px but the natural ratio gave `29.29` px). Width/height are now also pinned via inline style, and the inline-image vertical alignment is the default `baseline` rather than `middle` — `middle` adds half-x-height of parent-font leading and pushed the image past the bottom of any line sized to fit just the image (the typical "image alone in a table cell" case).
-  - **Explicit `w:before` is honored on the first paragraph of a page/column.** The paginator was unconditionally zeroing `spaceBefore` whenever the cursor was at `topMargin`, which dropped Word-authored leading space (e.g. `w:before="1800"` on the title paragraph). Word 2013+ honors explicit before-spacing at the top of a page; trailing-spacing is already reset on new-page so applying it here does not carry spacing across page breaks.
+  - **Explicit `w:before` is honored on the first paragraph of a page/column.** The pageComposer was unconditionally zeroing `spaceBefore` whenever the cursor was at `topMargin`, which dropped Word-authored leading space (e.g. `w:before="1800"` on the title paragraph). Word 2013+ honors explicit before-spacing at the top of a page; trailing-spacing is already reset on new-page so applying it here does not carry spacing across page breaks.
   - **A hard `<w:br w:type="page"/>` in an otherwise-empty paragraph now forces a page break.** `paragraphHasPageBreak` previously required preceding visible content (relying on `renderedPageBreakBefore` to cover leading breaks), but that attr is informational only and not honored at layout, so an empty paragraph containing just a page-break run silently dropped the break.
 
 ## 0.4.2
@@ -461,15 +829,15 @@
   - Tables with vertically merged columns (`vMerge`) or explicit `gridSpan` no longer have continuation cells incorrectly expanded to span the full row.
   - A section override of only `marginRight` or `marginBottom` is now honored; unset sides inherit from the prior section instead of resetting to the OOXML 1440 default.
   - Paragraph spacing inside table cells is applied during measurement and rendering.
-  - An oversized paragraph or image (taller than the page content area, possibly after a continuous section break to a smaller page size) is placed with overflow instead of hanging the paginator.
+  - An oversized paragraph or image (taller than the page content area, possibly after a continuous section break to a smaller page size) is placed with overflow instead of hanging the pageComposer.
 
 - a2f6342: Trim verbose comments and dead test scaffolding left over from #334.
 - e32ebed: Fix list numbering when multiple `<w:num>` elements share one `<w:abstractNum>`. Per ECMA-376 §17.9.18 they share counter state and a `<w:lvlOverride>/<w:startOverride>` only resets the shared counter the first time its numId appears. Counter state is now keyed by abstractNumId; first-encounter resets are honored. Also fixes a related justification bug where list-level indents written with `<w:ind w:start="0"/>` were ignored, causing a 720-twip fallback indent to be applied and table-cell text to render 48px short of the cell width.
 - 7a2665c: Fix font reset on save when a paragraph style explicitly sets `<w:rFonts ascii="Arial">` while document defaults supply a paired `asciiTheme="minorHAnsi"`. The OOXML render layer treats the theme attribute as overriding the explicit name, so a stale `asciiTheme` from `docDefaults` was silently turning Arial headings into Calibri. The font merge now treats explicit/theme attribute pairs as a unit per ECMA-376 §17.3.2.27. Fixes #387.
 - f42ad91: Fix paragraph default font family resolution when a paragraph's pPr/rPr sets only one slot of `<w:rFonts>` (e.g. `w:eastAsia="Calibri"`). Previously the entire fontFamily object was replaced on merge, wiping out other slots inherited from the basedOn chain (e.g. `w:ascii="Arial Narrow"`). Per ECMA-376 §17.3.2.27, each ascii/hAnsi/eastAsia/cs slot — and its theme pair — must merge independently. Identical paragraphs now resolve to the same default font family and render at the same height.
 - e89e859: Translate the floating page indicator (the "current of total" widget that appears next to the scrollbar while scrolling a multi-page document). It was rendering the literal string `" of "` regardless of the active locale. Fixes #399. New `viewer.pageIndicator` translation key (`"{current} of {total}"`) routes through the same `i18n` prop as the rest of the UI. Also fills in the four remaining `null` keys in `he.json` (`toolbar.open`, `toolbar.openShortcut`, `toolbar.save`, `toolbar.saveShortcut`) so all six shipped locales (de, en, he, pl, pt-BR, zh-CN) are at 100% coverage.
-- 5454bb2: Fix paragraph wrappers double-counting `spaceBefore`/`spaceAfter` in the renderer. The paginator already positions `fragment.y` with the gap baked in, but the renderer was also applying it as wrapper padding. Wrapper height is set to line-height only, so the padding pushed text below the wrapper bottom and the next paragraph's background covered the bottom half of the heading text. Symptom on real-world docs: top half of `Dev setup` heading missing — covered by the lavender background of the code block immediately following.
-- 1259fa0: Unify header/footer rendering with the body pipeline. Header tables now render in the normal paginated view (previously they were silently dropped on the paginated render path while showing in edit mode), and headers/footers gain full block-kind support — paragraphs, tables, images, text boxes, and PAGE/NUMPAGES fields — by routing through the same `headerFooterToProseDoc → toFlowBlocks → measureBlocks → renderFragment` chain the body uses. Fixes #356, #357, #358.
+- 5454bb2: Fix paragraph wrappers double-counting `spaceBefore`/`spaceAfter` in the renderer. The pageComposer already positions `fragment.y` with the gap baked in, but the renderer was also applying it as wrapper padding. Wrapper height is set to line-height only, so the padding pushed text below the wrapper bottom and the next paragraph's background covered the bottom half of the heading text. Symptom on real-world docs: top half of `Dev setup` heading missing — covered by the lavender background of the code block immediately following.
+- 1259fa0: Unify header/footer rendering with the body pipeline. Header tables now render in the normal paginated view (previously they were silently dropped on the paginated render path while showing in edit mode), and headers/footers gain full block-kind support — paragraphs, tables, images, text boxes, and PAGE/NUMPAGES fields — by routing through the same `headerFooterToProseDoc → buildBoxTree → measureBlocks → paintFragment` chain the body uses. Fixes #356, #357, #358.
 - f6703d0: Add Simplified Chinese (zh-CN) translation.
 
 ## 0.4.1
@@ -487,7 +855,7 @@
   - ProseMirror: `./prosemirror`, `./prosemirror/extensions`, `./prosemirror/conversion`, `./prosemirror/commands`, `./prosemirror/plugins`, `./prosemirror/editor.css`
   - DOCX I/O: `./docx`, `./docx/serializer`
   - Headless agent: `./agent`
-  - Layout (`@experimental`): `./layout-engine`, `./layout-painter`, `./layout-bridge`, `./plugin-api`
+  - Layout (`@experimental`): `./pagination-model`, `./painter-model`, `./flow-model`, `./plugin-api`
   - Types: `./types/document`, `./types/content`, `./types/agentApi`
   - Utilities: `./utils`
 
@@ -537,7 +905,7 @@
   - `<AgentChatLog>`, `<AgentComposer>`, `<AgentSuggestionChip>`, `<AgentTimeline>` — Google-Docs-style UI for message list, composer, starter chips, and a collapsible tool-call timeline (per-row spinner while streaming, auto-collapses to "N steps" on done).
   - New types: `AgentMessage`, `AgentToolCall`.
 
-  ### Toolkit (`@eigenpal/docx-editor-agents`)
+  ### Toolkit (`@docx-editor.dev/agents`)
   - Four new tools: `apply_formatting`, `set_paragraph_style`, `read_page`, `read_pages`.
   - `useDocxAgentTools` hook with `include` / `exclude` filters; `executeToolCall` enforces them.
   - `AgentToolDefinition.displayName` for friendly UI labels.
@@ -560,7 +928,7 @@
 
   `@eigenpal/docx-js-editor`: `<AgentPanel>`, `<AgentChatLog>`, `<AgentComposer>`, `<AgentSuggestionChip>`, `<AgentTimeline>`, matching prop types, `AgentMessage`, `AgentToolCall`. `DocxEditorRef` gains `applyFormatting`, `setParagraphStyle`, `getPageContent`.
 
-  `@eigenpal/docx-editor-agents`: new `/ai-sdk/server` and `/ai-sdk/react` subpaths (peer dep `ai`, optional). `/server` and `/react` unchanged. `displayName` on `AgentToolDefinition`.
+  `@docx-editor.dev/agents`: new `/ai-sdk/server` and `/ai-sdk/react` subpaths (peer dep `ai`, optional). `/server` and `/react` unchanged. `displayName` on `AgentToolDefinition`.
 
   ### Known limitations (v1.1)
   - Missing Word `Range.font.*` properties: `superscript`, `subscript`, `allCaps`, `smallCaps`, `doubleStrikeThrough`, `colorTheme` tint/shade.
@@ -582,7 +950,7 @@
   - **Mutate** — `add_comment`, `suggest_change` (one tool, three modes via empty-string semantics: replacement / deletion / insertion at paragraph end), `reply_comment`, `resolve_comment`
   - **Navigate** — `scroll`
 
-  Exported from `@eigenpal/docx-editor-agents` as `agentTools`, `getToolSchemas()`, `executeToolCall(name, args, bridge)`.
+  Exported from `@docx-editor.dev/agents` as `agentTools`, `getToolSchemas()`, `executeToolCall(name, args, bridge)`.
 
   ## Two bridges, same interface
 
@@ -590,11 +958,11 @@
 
   ```ts
   // Live editor in a browser
-  import { useAgentChat } from '@eigenpal/docx-editor-agents/bridge';
+  import { useAgentChat } from '@docx-editor.dev/agents/bridge';
   const { executeToolCall, toolSchemas } = useAgentChat({ editorRef, author: 'AI' });
 
   // Server-side, against a parsed DOCX
-  import { DocxReviewer, createReviewerBridge } from '@eigenpal/docx-editor-agents';
+  import { DocxReviewer, createReviewerBridge } from '@docx-editor.dev/agents';
   const reviewer = await DocxReviewer.fromBuffer(buffer, 'AI');
   const bridge = createReviewerBridge(reviewer);
   const result = executeToolCall('add_comment', { paraId, text }, bridge);
@@ -605,8 +973,8 @@
   ## MCP server (built-in, spec 2025-06-18)
 
   ```ts
-  import { McpServer, createReviewerBridge, DocxReviewer } from '@eigenpal/docx-editor-agents';
-  import { McpServer as _ } from '@eigenpal/docx-editor-agents/mcp';
+  import { McpServer, createReviewerBridge, DocxReviewer } from '@docx-editor.dev/agents';
+  import { McpServer as _ } from '@docx-editor.dev/agents/mcp';
 
   const server = new McpServer(bridge, { name: 'my-saas', version: '1.0.0' });
   const reply = server.handle(jsonRpcMessage); // sync, transport-free, never throws

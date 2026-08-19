@@ -8,10 +8,12 @@
 > [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor). It is not
 > a development fork: no product code is written here.**
 >
-> FluentaOne's web app embeds the upstream `@eigenpal/docx-editor-core` /
-> `-react` npm packages as the document editor behind the docedit feature
-> (document templates, document-editor task views). This fork exists for two
-> reasons, per SPIKE-DOCEDIT-001 in `flnt-docs-central`
+> FluentaOne's web app embeds the upstream `@docx-editor.dev/core` /
+> `@docx-editor.dev/react` npm packages as the document editor behind the
+> docedit feature (document templates, document-editor task views). Upstream
+> renamed these at 2.x — they were `@eigenpal/docx-editor-core` /
+> `-react` before. This fork exists for two reasons, per SPIKE-DOCEDIT-001 in
+> `flnt-docs-central`
 > (`architecture/spikes/SPIKE-DOCEDIT-001-eigenpal-evaluation.md`):
 >
 > 1. **Source escrow** — a copy of the source we depend on, under our own
@@ -25,12 +27,19 @@
 >    becomes the FluentaOne private-registry source (prd promotion gate).
 >
 > **Day to day:** dev/stg consume the packages from the public npm registry;
-> the fork is synced (`gh repo sync flnteu/docx-editor`) and tagged
-> (`v<upstream-version>-flnteu`) when we adopt a new upstream version.
+> the fork is synced and tagged (`v<upstream-version>-flnteu`) when we adopt a
+> new upstream version. **`gh repo sync` does not work on this fork** and
+> never will: upstream re-initialized its git history on 2026-07-20, so the
+> two repositories share no commit at all (`git merge-base origin/main
+upstream/main` exits 1). The working sync procedure — and the recipe for
+> consuming a tag from npm — is in
+> [FLNTEU-README.md](FLNTEU-README.md); follow it instead.
+>
 > Fork-local files are confined to `README.md` (this notice),
-> `.github/workflows/flnteu-*.yml`, `.github/flnteu/`, `.claude/`, and the
-> CLA workflow's fork guard — everything else tracks upstream to keep syncs
-> conflict-free. Do not open feature PRs here; upstream contributions go to
+> `FLNTEU-README.md`, `.github/workflows/flnteu-*.yml`, `.github/flnteu/`,
+> `.claude/CLAUDE.md` + `.claude/settings.json`, and the CLA workflow's fork
+> guard — everything else tracks upstream to keep syncs conflict-free. Do not
+> open feature PRs here; upstream contributions go to
 > `eigenpal/docx-editor` (and require their CLA).
 
 <p align="center">
@@ -40,34 +49,22 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/@eigenpal/docx-editor-core"><img src="https://img.shields.io/npm/v/@eigenpal/docx-editor-core.svg?style=flat-square&color=3B5BDB" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/@eigenpal/docx-js-editor"><img src="https://img.shields.io/npm/dm/@eigenpal/docx-js-editor.svg?style=flat-square&color=3B5BDB" alt="npm downloads" /></a>
+  <a href="https://www.npmjs.com/package/@docx-editor.dev/core"><img src="https://img.shields.io/npm/v/@docx-editor.dev/core.svg?style=flat-square&color=3B5BDB" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/@docx-editor.dev/core"><img src="https://img.shields.io/npm/dm/@docx-editor.dev/core.svg?style=flat-square&color=3B5BDB" alt="npm downloads" /></a>
   <a href="https://github.com/eigenpal/docx-editor/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache_2.0-blue.svg?style=flat-square&color=3B5BDB" alt="license" /></a>
   <a href="https://docx-editor.dev/editor"><img src="https://img.shields.io/badge/Live_Demo-3B5BDB?style=flat-square&logo=vercel&logoColor=white" alt="Demo" /></a>
   <a href="https://www.docx-editor.dev/docs"><img src="https://img.shields.io/badge/Docs-3B5BDB?style=flat-square&logo=readthedocs&logoColor=white" alt="Documentation" /></a>
 </p>
 
-Open-source WYSIWYG `.docx` editor for React and Vue with canonical OOXML, tracked changes, and real-time collaboration. Agent-ready. **[Live demo](https://docx-editor.dev/editor)** | **[Documentation](https://www.docx-editor.dev/docs)**
+Open-source WYSIWYG `.docx` editor for React. Word-faithful pagination, tracked changes, comments — and **lossless round-trip**: untouched content and unsupported OOXML survive editing and save. **[Live demo](https://docx-editor.dev/editor)** | **[Documentation](https://www.docx-editor.dev/docs)**
 
 ## Quick Start
 
 ```bash
-npm install @eigenpal/docx-editor-react
+npm install @docx-editor.dev/react @docx-editor.dev/core
 ```
 
 See the [React quick start](#react) below.
-
-```bash
-npm install @eigenpal/docx-editor-vue
-```
-
-See the [Vue quick start](#vue) below.
-
-```bash
-npm install @eigenpal/nuxt-docx-editor
-```
-
-See the [Nuxt quick start](#nuxt) below.
 
 <p align="center">
   <a href="https://docx-editor.dev/editor">
@@ -75,38 +72,52 @@ See the [Nuxt quick start](#nuxt) below.
   </a>
 </p>
 
+## Nothing is lost
+
+Open a document, edit one word, save it. Everything you did not touch survives: custom XML, embedded fonts, macros, media, Smart Tags, and markup from add-ins the editor has never heard of.
+
+The mechanism is the canonical tree. Parsing types a node only where layout needs it and keeps everything else generic. On save, the tree serializes with structural fidelity and package payloads such as media, fonts, and VBA binaries pass through untouched. An element the parser cannot type — unknown, or known but in an invalid position — becomes a generic node instead of being dropped, so unrecognized markup never blocks editing.
+
+CI checks this on a corpus of real documents with two oracles: a canonical fingerprint over the tree, and a semantic digest compared across save and reopen. A change that drops content fails the build.
+
 ## Packages
 
-| Package                                                                                      | Description                                                                                                                                | Docs                                                  |
-| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- |
-| [`@eigenpal/docx-editor-react`](https://www.npmjs.com/package/@eigenpal/docx-editor-react)   | <img src="https://cdn.simpleicons.org/react/61DAFB" width="20" align="middle" /> &nbsp; React adapter. Toolbar, paged editor, plugins.     | [Docs](https://www.docx-editor.dev/docs/1.x/react)    |
-| [`@eigenpal/docx-editor-vue`](https://www.npmjs.com/package/@eigenpal/docx-editor-vue)       | <img src="https://cdn.simpleicons.org/vuedotjs/4FC08D" width="20" align="middle" /> &nbsp; Vue 3 adapter. Toolbar, paged editor, plugins.  | [Docs](https://www.docx-editor.dev/docs/1.x/vue)      |
-| [`@eigenpal/nuxt-docx-editor`](https://www.npmjs.com/package/@eigenpal/nuxt-docx-editor)     | <img src="https://cdn.simpleicons.org/nuxt/00DC82" width="20" align="middle" /> &nbsp; Nuxt 3 & 4 module wrapping the Vue adapter.         | [Docs](https://www.docx-editor.dev/docs/1.x/vue/nuxt) |
-| [`@eigenpal/docx-editor-core`](https://www.npmjs.com/package/@eigenpal/docx-editor-core)     | Framework-agnostic core: OOXML parser, serializer, layout engine, ProseMirror schema. Depend on this if you fork the React or Vue adapter. | [Docs](https://www.docx-editor.dev/docs/1.x/core)     |
-| [`@eigenpal/docx-editor-i18n`](https://www.npmjs.com/package/@eigenpal/docx-editor-i18n)     | Shared locale strings and types consumed by both adapters.                                                                                 | [Docs](https://www.docx-editor.dev/docs/1.x/i18n)     |
-| [`@eigenpal/docx-editor-agents`](https://www.npmjs.com/package/@eigenpal/docx-editor-agents) | Agent SDK and chat UI: framework-agnostic bridge, MCP server, AI SDK adapters, plus UI components.                                         | [Docs](https://www.docx-editor.dev/docs/1.x/agents)   |
+| Package                                                                                    | Description                                                                                                                                                                    | Docs                                                    |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- |
+| [`@docx-editor.dev/react`](https://www.npmjs.com/package/@docx-editor.dev/react)           | <img src="https://cdn.simpleicons.org/react/61DAFB" width="20" align="middle" /> &nbsp; React adapter. Root component, provider primitives, shared hooks, and compound chrome. | [Docs](https://www.docx-editor.dev/docs/2.x/react)      |
+| [`@docx-editor.dev/core`](https://www.npmjs.com/package/@docx-editor.dev/core)             | Framework-agnostic engine: OOXML read/write, canonical document tree, layout, paint. Depend on this if you fork the React adapter.                                             | [Docs](https://www.docx-editor.dev/docs/2.x/core)       |
+| [`@docx-editor.dev/i18n`](https://www.npmjs.com/package/@docx-editor.dev/i18n)             | Shared locale strings and types consumed by the adapter.                                                                                                                       | [Docs](https://www.docx-editor.dev/docs/2.x/i18n)       |
+| [`@docx-editor.dev/pro`](https://www.npmjs.com/package/@docx-editor.dev/pro)               | Tracked changes, comments, and custom nodes.                                                                                                                                   | [Docs](https://www.docx-editor.dev/docs/2.x/pro)        |
+| [`@docx-editor.dev/editor-api`](https://www.npmjs.com/package/@docx-editor.dev/editor-api) | Office.js-compatible editing API: a batching object model that edits a document from a server, or an editor already open in a page.                                            | [Docs](https://www.docx-editor.dev/docs/2.x/editor-api) |
 
-> **Forking the adapter?** Keep your fork thin. Depend on `@eigenpal/docx-editor-core` directly so parser, serializer, and rendering fixes land in your build automatically, without backporting each upstream change by hand.
+Every package above is Apache 2.0 except `@docx-editor.dev/editor-api` and `@docx-editor.dev/pro`, which are licensed under the EigenPal Pro Evaluation License 1.0 ([editor-api](packages/editor-api/LICENSE.md), [pro](packages/pro/LICENSE.md)): free to evaluate, production use requires a commercial agreement — **[licensing@eigenpal.com](mailto:licensing@eigenpal.com)**.
+
+> **Forking the adapter?** Keep your fork thin. Depend on `@docx-editor.dev/core` directly so parser, serializer, and rendering fixes land in your build automatically, without backporting each upstream change by hand.
 
 ## React
 
 ```tsx
 import { useState } from 'react';
-import { DocxEditor } from '@eigenpal/docx-editor-react';
-import '@eigenpal/docx-editor-react/styles.css';
+import { DocxEditor } from '@docx-editor.dev/react';
+import '@docx-editor.dev/core/styles/editor.css';
 
 export function App() {
-  const [buffer, setBuffer] = useState<ArrayBuffer | null>(null);
+  const [doc, setDoc] = useState<Uint8Array>();
 
   return (
-    <>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <input
         type="file"
         accept=".docx"
-        onChange={async (e) => setBuffer((await e.target.files?.[0]?.arrayBuffer()) ?? null)}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          setDoc(file ? new Uint8Array(await file.arrayBuffer()) : undefined);
+        }}
       />
-      {buffer && <DocxEditor documentBuffer={buffer} mode="editing" />}
-    </>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {doc && <DocxEditor document={doc} mode="edit" />}
+      </div>
+    </div>
   );
 }
 ```
@@ -114,56 +125,6 @@ export function App() {
 > **Next.js / SSR:** Use dynamic import. The editor requires the DOM.
 
 Full docs: [`packages/react`](packages/react) · [API reference](https://www.docx-editor.dev/docs/props).
-
-## Vue
-
-```vue
-<script setup lang="ts">
-import { ref } from 'vue';
-import { DocxEditor } from '@eigenpal/docx-editor-vue';
-import '@eigenpal/docx-editor-vue/styles.css';
-
-const buffer = ref<ArrayBuffer | null>(null);
-
-async function loadFile(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  buffer.value = file ? await file.arrayBuffer() : null;
-}
-</script>
-
-<template>
-  <input type="file" accept=".docx" @change="loadFile" />
-  <DocxEditor v-if="buffer" :document-buffer="buffer" mode="editing" />
-</template>
-```
-
-Full docs: [`packages/vue`](packages/vue) · [API reference](https://www.docx-editor.dev/docs/props).
-
-## Nuxt
-
-```ts
-// nuxt.config.ts
-export default defineNuxtConfig({
-  modules: ['@eigenpal/nuxt-docx-editor'],
-});
-```
-
-`@eigenpal/nuxt-docx-editor` wraps the Vue adapter as a Nuxt 3 & 4 module: it auto-imports an SSR-safe `<DocxEditor>` component (no manual import, no `<ClientOnly>` wrapper) and the Vue composables.
-
-Full docs: [`packages/nuxt`](packages/nuxt).
-
-## Plugins
-
-```tsx
-import { DocxEditor } from '@eigenpal/docx-editor-react';
-import { PluginHost, templatePlugin } from '@eigenpal/docx-editor-react/plugin-api';
-
-<PluginHost plugins={[templatePlugin]}>
-  <DocxEditor documentBuffer={buffer} />
-</PluginHost>;
-```
-
-See the [plugin documentation](https://www.docx-editor.dev/docs/plugins) for the full plugin API.
 
 ## Development
 
@@ -176,9 +137,9 @@ bun run typecheck
 
 A live preview of `main` is auto-deployed at **[latest.docx-editor.dev](https://latest.docx-editor.dev/)** — useful for trying out changes before they ship to npm.
 
-Examples: [Vite](examples/vite) | [Next.js](examples/nextjs) | [Remix](examples/remix) | [Astro](examples/astro) | [Vue](examples/vue) | [Nuxt](examples/nuxt)
+Examples: [Vite](examples/vite) | [Next.js](examples/nextjs) | [Remix](examples/remix) | [Astro](examples/astro)
 
-**[Documentation](https://www.docx-editor.dev/docs)** | **[Props & Ref Methods](https://www.docx-editor.dev/docs/props)** | **[Plugins](https://www.docx-editor.dev/docs/plugins)** | **[Architecture](https://www.docx-editor.dev/docs/architecture)**
+**[Documentation](https://www.docx-editor.dev/docs)** | **[Props & Ref Methods](https://www.docx-editor.dev/docs/props)** | **[Architecture](https://www.docx-editor.dev/docs/architecture)**
 
 ## Contributing
 
@@ -193,6 +154,7 @@ Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, 
 | `fr`    | French               |
 | `he`    | Hebrew               |
 | `hi`    | Hindi                |
+| `id`    | Indonesian           |
 | `pl`    | Polish               |
 | `pt-BR` | Portuguese (Brazil)  |
 | `tr`    | Turkish              |
@@ -204,6 +166,10 @@ Help translate the editor into your language! See the full **[i18n contribution 
 bun run i18n:new de      # scaffold German locale
 bun run i18n:status      # check translation coverage
 ```
+
+## License
+
+[Apache 2.0](LICENSE), except `packages/editor-api/` and `packages/pro/`, which are licensed under the EigenPal Pro Evaluation License 1.0 ([editor-api](packages/editor-api/LICENSE.md), [pro](packages/pro/LICENSE.md)). That licence permits internal, non-production evaluation; production use requires a written commercial agreement, available from **[licensing@eigenpal.com](mailto:licensing@eigenpal.com)**.
 
 ## Commercial Support
 

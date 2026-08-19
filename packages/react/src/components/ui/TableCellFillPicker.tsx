@@ -6,7 +6,7 @@
  */
 
 import { useCallback } from 'react';
-import type { ColorValue, Theme } from '@eigenpal/docx-editor-core/types/document';
+import type { ColorValue, Theme } from '@docx-editor.dev/core/contracts/editor';
 import type { TableAction } from './TableToolbar';
 import { ColorPicker } from './ColorPicker';
 import { useTranslation } from '../../i18n';
@@ -41,16 +41,18 @@ export function TableCellFillPicker({
   );
 
   return (
-    <ColorPicker
-      mode="highlight"
-      value={value}
-      onChange={handleChange}
-      theme={theme}
-      disabled={disabled}
-      title={t('table.cellFillColor')}
-      icon="format_color_fill"
-      autoLabel={t('colorPicker.noColor')}
-    />
+    <div data-testid="toolbar-table-cell-fill" style={{ display: 'inline-block' }}>
+      <ColorPicker
+        mode="highlight"
+        value={value}
+        onChange={handleChange}
+        theme={theme}
+        disabled={disabled}
+        title={t('table.cellFillColor')}
+        icon="format_color_fill"
+        autoLabel={t('colorPicker.noColor')}
+      />
+    </div>
   );
 }
 

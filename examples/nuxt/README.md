@@ -1,6 +1,6 @@
 # Nuxt example
 
-`@eigenpal/nuxt-docx-editor`, the Nuxt 3 & 4 module wrapping the Vue adapter.
+`@docx-editor.dev/nuxt`, the Nuxt 3 & 4 module wrapping the Vue adapter.
 Registering the module is the whole integration: it auto-imports an
 SSR-safe `<DocxEditor>` component and injects the editor stylesheet. No
 manual import, no `<ClientOnly>` wrapper.
@@ -22,7 +22,7 @@ Or from this directory: `bun run dev`.
 
 ```ts
 export default defineNuxtConfig({
-  modules: ['@eigenpal/nuxt-docx-editor'],
+  modules: ['@docx-editor.dev/nuxt'],
 });
 ```
 
@@ -32,7 +32,7 @@ client-only, so it never renders during SSR:
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue';
-import { createEmptyDocument } from '@eigenpal/docx-editor-core';
+import { createEmptyDocument } from '@docx-editor.dev/core';
 
 const doc = ref(createEmptyDocument());
 </script>
@@ -46,17 +46,17 @@ const doc = ref(createEmptyDocument());
 
 | File             | What it does                                 |
 | ---------------- | -------------------------------------------- |
-| `nuxt.config.ts` | Registers the module, loads Material Symbols |
+| `nuxt.config.ts` | Registers the module, sets the page icons    |
 | `app.vue`        | Opens a `.docx` and renders `<DocxEditor>`   |
 
 ## Use it in your own Nuxt app
 
 ```bash
-npm install @eigenpal/nuxt-docx-editor @eigenpal/docx-editor-core
+npm install @docx-editor.dev/nuxt @docx-editor.dev/core
 ```
 
 Add the module to `nuxt.config.ts`. The module handles the client-only
-boundary and the stylesheet. Load the Material Symbols font via
-`app.head.link` in `nuxt.config.ts` for the toolbar icons.
+boundary and the stylesheet. Toolbar icons are bundled as inline SVG, so
+there is no icon font to load.
 
 Docs: https://www.docx-editor.dev/docs/1.x/vue/nuxt

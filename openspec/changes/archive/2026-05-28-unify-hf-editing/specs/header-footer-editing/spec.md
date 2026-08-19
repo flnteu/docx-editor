@@ -105,12 +105,12 @@ Each hidden HF EditorView SHALL be initialized from its corresponding `Document.
 
 ### Requirement: Painter consumes HF PM document directly
 
-The painter pipeline (`convertHeaderFooterToContent` in `packages/core/src/layout-bridge/headerFooterLayout.ts`) SHALL accept either the legacy `HeaderFooter.content` array or the current PM document of the corresponding HF EditorView, and prefer the PM document when one exists for that slot.
+The painter pipeline (`convertHeaderFooterToContent` in `packages/core/src/flow-model/headerFooterLayout.ts`) SHALL accept either the retired `HeaderFooter.content` array or the current PM document of the corresponding HF EditorView, and prefer the PM document when one exists for that slot.
 
 #### Scenario: PM-driven paint after edit
 
 - **WHEN** the user edits a header and a layout pass runs
-- **THEN** `convertHeaderFooterToContent` reads from the HF EditorView's `state.doc` and feeds it to `toFlowBlocks` → `measureBlocks` → `renderHeaderFooterContent`
+- **THEN** `convertHeaderFooterToContent` reads from the HF EditorView's `state.doc` and feeds it to `buildBoxTree` → `measureBlocks` → `renderHeaderFooterContent`
 - **AND** the painted header reflects the edited content within one layout pass
 
 #### Scenario: Per-page reflow preserved
@@ -149,7 +149,7 @@ When the user clicks (or double-clicks) inside the painted `.layout-page-header`
 
 ### Requirement: Selection overlay draws HF carets and selections
 
-A selection overlay SHALL draw the caret and selection rectangles for the currently focused HF EditorView inside the painted `.layout-page-header` or `.layout-page-footer` region, using the painter's existing `data-pm-start` and `data-pm-end` markers on cell content for position mapping. Only the focused EditorView's selection SHALL render an overlay at any given time.
+A selection overlay SHALL draw the caret and selection rectangles for the currently focused HF EditorView inside the painted `.layout-page-header` or `.layout-page-footer` region, using the painter's existing `data-doc-from` and `data-doc-to` markers on cell content for position mapping. Only the focused EditorView's selection SHALL render an overlay at any given time.
 
 #### Scenario: Caret visible in HF cell
 

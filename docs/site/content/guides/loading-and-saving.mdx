@@ -1,0 +1,145 @@
+---
+title: 'Loading & saving'
+description: 'Load DOCX bytes into the editor root, swap documents through the shared ref, and serialize the current state back out to a .docx file on demand.'
+category: 'Guides'
+seoTitle: 'Loading and saving DOCX documents'
+---
+
+The editor takes a `.docx` file in and gives a `.docx` file back. Everything happens client-side: no upload, no conversion service.
+
+## Input formats
+
+The editor takes the document through the `document` prop. The most common value is `Uint8Array` DOCX bytes:
+
+```tsx
+<DocxEditor document={bytes} />
+```
+
+### From a URL
+
+```tsx
+import { useEffect, useState } from 'react';
+import { DocxEditor } from '@docx-editor.dev/react';
+
+export function Editor({ url }: { url: string }) {
+  const [doc, setDoc] = useState<Uint8Array>();
+
+  useEffect(() => {
+    let cancelled = false; // ignore stale responses if url changes
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((buffer) => {
+        if (!cancelled) setDoc(new Uint8Array(buffer));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  return <DocxEditor document={doc} />;
+}
+```
+
+### From a file input
+
+Read the selected file into bytes, then pass those bytes through `document`:
+
+```tsx
+import { useState } from 'react';
+import { DocxEditor } from '@docx-editor.dev/react';
+
+export function FileEditor() {
+  const [doc, setDoc] = useState<Uint8Array>();
+
+  return (
+    <>
+      <input
+        type="file"
+        accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          setDoc(new Uint8Array(await file.arrayBuffer()));
+        }}
+      />
+      {doc && <DocxEditor document={doc} />}
+    </>
+  );
+}
+```
+
+### Swapping documents at runtime
+
+To replace the document without remounting the component, use the ref:
+
+```tsx
+const ref = useRef<DocxEditorRef>(null);
+
+ref.current?.load(nextBytes);
+```
+
+## Saving
+
+Two paths matter:
+
+- `ref.save()` returns `Promise<ArrayBuffer | null>`
+- `onSave` lets you override the packaged File → Save action
+
+```tsx
+<DocxEditor ref={ref} document={bytes} onSave={() => void persist()} />
+```
+
+`save()` resolves `null` when there is no document to serialize, so guard the result.
+
+## Download helper
+
+The serialized buffer downloads like any other binary:
+
+```ts
+async function downloadDocx(ref: DocxEditorRef, fileName: string) {
+  const buf = await ref.save();
+  if (!buf) return;
+  const blob = new Blob([buf], {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName.endsWith('.docx') ? fileName : `${fileName}.docx`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+```
+
+## Autosave
+
+Debounce `ref.save()` when `onChange` fires:
+
+```tsx
+import { useRef } from 'react';
+import { DocxEditor, type DocxEditorRef } from '@docx-editor.dev/react';
+
+export function AutosaveEditor({ docId, bytes }: { docId: string; bytes: Uint8Array }) {
+  const ref = useRef<DocxEditorRef>(null);
+  const timer = useRef<number | null>(null);
+
+  const onChange = () => {
+    if (timer.current) window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(async () => {
+      const buf = await ref.current?.save();
+      if (!buf) return;
+      await fetch(`/api/documents/${docId}`, { method: 'PUT', body: buf });
+    }, 1500);
+  };
+
+  return <DocxEditor ref={ref} document={bytes} onChange={onChange} />;
+}
+```
+
+Pick a debounce window that matches your backend's write tolerance. 1 to 2 seconds is a reasonable default.
+
+## Next steps
+
+- [Props reference](/docs/2.x/react/props) for `document`, `onSave`, and the shared ref
+- [Editing API](/docs/2.x/editor-api) to read and write a document without mounting an editor
+- [React examples](/docs/2.x/react/examples) for more loading, saving, and editor state patterns

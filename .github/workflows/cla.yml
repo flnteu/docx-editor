@@ -25,26 +25,31 @@ permissions:
 
 jobs:
   cla:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     # NOTE: the bot login below is hardcoded in three places (this if:,
     # GIT_AUTHOR_NAME, GIT_AUTHOR_EMAIL). They must stay in sync; missing
     # this if: when renaming the App would let the bot self-sign again.
     # GitHub Actions does not allow the env context in job-level if:, so
     # this can't be DRYed via a workflow-level variable.
     #
-    # Fork guard (DEV-1218): the whole job only makes sense on the
-    # upstream eigenpal repo. The "Mint App installation token" step needs
-    # the eigenpal-release-pal App's credentials
-    # (secrets.RELEASE_PAL_APP_ID / RELEASE_PAL_PRIVATE_KEY), which do not
-    # and must not exist on the flnteu fork — so on the fork the job died
-    # at that step on every PR, leaving a phantom red "cla" check that no
-    # allowlist/CLA_ORG tweak can fix (the ALLOWLIST logic runs only after
-    # a token is minted). Fork-internal PRs are not contributions to
-    # Eigenpal (see the ALLOWLIST note below), so the honest behavior on
-    # the fork is to skip. `secrets` is not available in job-level if:,
-    # hence the repo-owner check. If the fork ever wants its own CLA gate
-    # for external contributors, it needs its own GitHub App + secrets and
-    # this condition adjusted.
+    # Fork guard (DEV-1218, re-applied on upstream 2.5.0 by DEV-2291): the
+    # whole job only makes sense on the upstream eigenpal repo. The "Mint
+    # App installation token" step needs the eigenpal-release-pal App's
+    # credentials (secrets.RELEASE_PAL_APP_ID / RELEASE_PAL_PRIVATE_KEY),
+    # which do not and must not exist on the flnteu fork — so on the fork
+    # the job died at that step on every PR, leaving a phantom red "cla"
+    # check that no allowlist/CLA_ORG tweak can fix (the ALLOWLIST logic
+    # runs only after a token is minted). Fork-internal PRs are not
+    # contributions to Eigenpal (see the ALLOWLIST note below), so the
+    # honest behavior on the fork is to skip. `secrets` is not available in
+    # job-level if:, hence the repo-owner check. If the fork ever wants its
+    # own CLA gate for external contributors, it needs its own GitHub App +
+    # secrets and this condition adjusted.
+    #
+    # `runs-on` above stays on upstream's Blacksmith runner, which the fork
+    # has no access to. That is deliberate and harmless: this guard means
+    # the job never schedules on the fork at all, and keeping the upstream
+    # value byte-for-byte is what keeps the next sync conflict-free.
     if: |
       github.repository_owner == 'eigenpal' &&
       (github.event_name == 'pull_request_target' ||
@@ -66,7 +71,7 @@ jobs:
           private-key: ${{ secrets.RELEASE_PAL_PRIVATE_KEY }}
 
       - name: Checkout main
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           token: ${{ steps.app-token.outputs.token }}
@@ -84,6 +89,8 @@ jobs:
           # Always-allowlisted: bots, plus named maintainer handles as a
           # safety net (in case the org-membership lookup fails for any
           # reason — private membership, transient API error, etc.).
+          # eigenpal-release-pal[bot] is this workflow's own App: it authors the
+          # PRs office-compat-drift.yml opens, and a bot cannot sign a CLA.
           #
           # FluentaOne fork (DEV-1218): FluentaOne staff are added here
           # because this fork's internal PRs are not contributions to
@@ -102,7 +109,7 @@ jobs:
           # Anyone intending to send work UPSTREAM to Eigenpal must still
           # sign — and if the IP belongs to their employer, §4 of CLA.md
           # requires employer permission or a Corporate CLA, not this one.
-          ALLOWLIST: 'dependabot[bot] github-actions[bot] renovate[bot] jedrazb kornel-schrenk'
+          ALLOWLIST: 'dependabot[bot] github-actions[bot] renovate[bot] eigenpal-release-pal[bot] jedrazb kornel-schrenk'
           # Auto-allowlist members of this org. Public members are recognized
           # via the workflow's GITHUB_TOKEN; private members will be prompted
           # to sign once (then they're recorded like anyone else). To turn the

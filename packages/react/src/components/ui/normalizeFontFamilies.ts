@@ -1,5 +1,2 @@
-// Re-export from core where the canonical implementation lives.
-export {
-  normalizeFontFamilies,
-  type FontOption,
-} from '@eigenpal/docx-editor-core/utils/fontOptions';
+// Re-export from the shared lib where the canonical implementation lives.
+export { normalizeFontFamilies, type FontOption } from '../../lib/fontOptions';

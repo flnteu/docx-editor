@@ -1,13 +1,23 @@
 #!/usr/bin/env node
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+//
+// Installs the packages the way a consumer does — from tarballs, into an empty project,
+// with npm resolving what it finds inside them — and builds a real app against the result.
+//
+// This is the only check that reads a published manifest rather than a workspace one, so
+// it is the only place a `workspace:` range, a missing `exports` subpath or a `files` list
+// that drops a needed file can fail before a user hits it.
+import { mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
-const tempRoot = mkdtempSync(path.join(tmpdir(), 'docx-editor-vue-consumer-'));
+const tempRoot = mkdtempSync(path.join(tmpdir(), 'docx-editor-consumers-'));
 const packDir = path.join(tempRoot, 'packs');
-const appDir = path.join(tempRoot, 'app');
+// The Vue consumer app that used to sit alongside the React one is gone while
+// @docx-editor.dev/vue is WIP and unpublished — there is no tarball for a real
+// consumer to install. Restore it when the package ships again.
+const reactAppDir = path.join(tempRoot, 'react-app');
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -45,22 +55,30 @@ try {
   }
 
   mkdirSync(packDir, { recursive: true });
-  mkdirSync(path.join(appDir, 'src'), { recursive: true });
 
+  // Every published package, including the ones the app below only imports for their
+  // types: an unpublished version of any of them turns into a registry lookup during
+  // install, and the registry has nothing to give.
   const tarballs = [
-    packPackage('packages/core'),
     packPackage('packages/i18n'),
-    packPackage('packages/agents'),
-    packPackage('packages/vue'),
+    packPackage('packages/core'),
+    packPackage('packages/react'),
+    packPackage('packages/fonts'),
+    packPackage('packages/editor-api'),
+    packPackage('packages/pro'),
   ];
 
+  mkdirSync(path.join(reactAppDir, 'src'), { recursive: true });
   writeFileSync(
-    path.join(appDir, 'package.json'),
+    path.join(reactAppDir, 'package.json'),
     JSON.stringify(
       {
         private: true,
         type: 'module',
-        scripts: { build: 'vite build' },
+        scripts: {
+          typecheck: 'tsc --noEmit',
+          build: 'npm run typecheck && vite build',
+        },
         dependencies: {},
         devDependencies: {},
       },
@@ -68,47 +86,46 @@ try {
       2
     )
   );
-
-  writeFileSync(path.join(appDir, 'index.html'), '<div id="app"></div><script type="module" src="/src/main.ts"></script>\n');
   writeFileSync(
-    path.join(appDir, 'src/App.vue'),
-    `<script setup lang="ts">
-import { ref } from 'vue';
-import { DocxEditor } from '@eigenpal/docx-editor-vue';
-import '@eigenpal/docx-editor-vue/styles.css';
+    path.join(reactAppDir, 'index.html'),
+    '<div id="root"></div><script type="module" src="/src/main.tsx"></script>\n'
+  );
+  // The imports are the contract: the packaged editor, the engine the adapter holds as a
+  // peer, the stylesheet (which ships from the engine, not the adapter), the fonts, and
+  // the two licensed packages. A subpath that stops being exported fails here.
+  writeFileSync(
+    path.join(reactAppDir, 'src/main.tsx'),
+    `import { createRoot } from 'react-dom/client';
+import { DocxEditor } from '@docx-editor.dev/react';
+import * as Engine from '@docx-editor.dev/core';
+import * as EngineEditor from '@docx-editor.dev/core/editor';
+import * as Fonts from '@docx-editor.dev/fonts';
+import * as EditorApi from '@docx-editor.dev/editor-api';
+import * as Pro from '@docx-editor.dev/pro';
+import * as ProReact from '@docx-editor.dev/pro/react';
+import '@docx-editor.dev/core/styles/editor.css';
 
-const buffer = ref<ArrayBuffer | null>(null);
+const exportedSurfaceChecks = [Engine, EngineEditor, Fonts, EditorApi, Pro, ProReact];
+console.assert(exportedSurfaceChecks.every((entry) => typeof entry === 'object' && entry !== null));
+void exportedSurfaceChecks;
 
-async function loadFile(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0];
-  buffer.value = file ? await file.arrayBuffer() : null;
-}
-</script>
-
-<template>
-  <input type="file" accept=".docx" @change="loadFile" />
-  <DocxEditor :document-buffer="buffer" mode="editing" />
-</template>
+createRoot(document.getElementById('root')!).render(<DocxEditor />);
 `
   );
   writeFileSync(
-    path.join(appDir, 'src/main.ts'),
-    `import { createApp } from 'vue';
-import App from './App.vue';
-
-createApp(App).mount('#app');
-`
+    path.join(reactAppDir, 'src/vite-env.d.ts'),
+    '/// <reference types="vite/client" />\n'
   );
   writeFileSync(
-    path.join(appDir, 'vite.config.ts'),
+    path.join(reactAppDir, 'vite.config.ts'),
     `import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
+import react from '@vitejs/plugin-react';
 
-export default defineConfig({ plugins: [vue()] });
+export default defineConfig({ plugins: [react()] });
 `
   );
   writeFileSync(
-    path.join(appDir, 'tsconfig.json'),
+    path.join(reactAppDir, 'tsconfig.json'),
     JSON.stringify(
       {
         compilerOptions: {
@@ -116,26 +133,67 @@ export default defineConfig({ plugins: [vue()] });
           target: 'ES2022',
           module: 'ESNext',
           moduleResolution: 'Bundler',
-          jsx: 'preserve',
+          jsx: 'react-jsx',
           skipLibCheck: true,
-          types: ['vite/client'],
         },
-        include: ['src/**/*.ts', 'src/**/*.vue', 'vite.config.ts'],
+        include: ['src/**/*.ts', 'src/**/*.tsx'],
       },
       null,
       2
     )
   );
+  run(
+    'npm',
+    [
+      'install',
+      '--ignore-scripts',
+      'react',
+      'react-dom',
+      '@types/react',
+      '@types/react-dom',
+      '@vitejs/plugin-react',
+      'vite',
+      'typescript',
+      ...tarballs,
+    ],
+    { cwd: reactAppDir }
+  );
+  run('npm', ['run', 'build'], { cwd: reactAppDir });
 
-  run('npm', ['install', '--ignore-scripts', 'vue', '@vitejs/plugin-vue', 'vite', 'typescript', ...tarballs], {
-    cwd: appDir,
-  });
-  run('npm', ['run', 'build'], { cwd: appDir });
-  console.log('Fresh Vue consumer install/build passed.');
+  // The consumer has NO Tailwind and no PostCSS — exactly the host the shipped
+  // stylesheet must carry on its own. Assert the CSS vite emitted is the compiled,
+  // `.docx-editor`-scoped artifact: a raw `@tailwind` directive here means the chrome
+  // ships unstyled to Tailwind-less hosts and doubly-styled to Tailwind hosts.
+  const assetsDir = path.join(reactAppDir, 'dist', 'assets');
+  const emittedCss = readdirSync(assetsDir)
+    .filter((name) => name.endsWith('.css'))
+    .map((name) => readFileSync(path.join(assetsDir, name), 'utf8'))
+    .join('\n');
+  if (emittedCss.length === 0) {
+    throw new Error('consumer build emitted no CSS asset');
+  }
+  // The emitted CSS is MINIFIED: quotes drop from attribute selectors and the file is
+  // one line, so every check below is written against the minified shape.
+  const minified = emittedCss.replace(/\/\*[\s\S]*?\*\//g, '');
+  if (/@tailwind\b/.test(minified)) {
+    throw new Error('consumer CSS still contains a raw @tailwind directive');
+  }
+  if (!/\.docx-editor \.flex\b/.test(minified)) {
+    throw new Error('consumer CSS is missing .docx-editor-scoped utilities');
+  }
+  if (!/\.docx-editor \[contenteditable=["']?true["']?\]/.test(minified)) {
+    throw new Error('consumer CSS is missing the scoped [contenteditable] caret rule');
+  }
+  // A selector STARTING with [contenteditable (after {, }, comma, or file start)
+  // would reach every rich-text field in a host app.
+  if (/(^|[{},])\s*\[contenteditable/.test(minified)) {
+    throw new Error('consumer CSS contains an unscoped [contenteditable] rule');
+  }
+  console.log('Fresh React consumer install/build passed (CSS compiled and scoped).');
 } finally {
   if (process.env.KEEP_CONSUMER_INSTALL_TEMP !== '1') {
     rmSync(tempRoot, { recursive: true, force: true });
   } else {
-    console.log(`Kept temp app at ${appDir}`);
+    console.log(`Kept temp app at ${reactAppDir}`);
   }
 }

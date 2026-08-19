@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Guards the per-locale i18n bundle promise: each `@eigenpal/docx-editor-i18n/<code>`
+// Guards the per-locale i18n bundle promise: each `@docx-editor.dev/i18n/<code>`
 // subpath ships only that locale's JSON, so dynamic-locale apps code-split
 // cleanly.
 //
 // If a contributor ever adds a value import from `./index` to a per-locale
 // `src/<code>.ts` (e.g. `import { deepMerge } from './index'`), tree-shaking
-// breaks and the per-locale dist balloons toward the full 235 KB root bundle.
+// breaks and the per-locale dist balloons toward the full ~220 KB root bundle.
 // This check fails loudly when that happens.
 //
-// Run after `bun run --filter '@eigenpal/docx-editor-i18n' build`.
+// Run after `bun run --filter '@docx-editor.dev/i18n' build`.
 // Wired into CI in `.github/workflows/ci.yml`.
 
 import { existsSync, statSync } from 'node:fs';
@@ -20,10 +20,10 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const i18nDir = join(__dirname, '..', 'packages', 'i18n');
 const i18nDist = join(i18nDir, 'dist');
 
-// Current largest per-locale bundle is he.mjs at ~55 KB (Hebrew text encodes
+// Current largest per-locale bundle is he.mjs at ~23 KB (Hebrew text encodes
 // large in UTF-8). 80 KB gives ~50% headroom for locale growth while still
 // catching tree-shake regressions, which typically jump past 100 KB and
-// approach the 235 KB root bundle.
+// approach the ~220 KB root bundle.
 const MAX_BYTES = 80 * 1024;
 
 const codes = readLocaleCodes(i18nDir);
@@ -41,7 +41,7 @@ for (const code of codes) {
     const path = join(i18nDist, file);
     if (!existsSync(path)) {
       errors.push(
-        `✗ ${file} missing in dist/ — did \`bun run --filter '@eigenpal/docx-editor-i18n' build\` complete?`
+        `✗ ${file} missing in dist/ — did \`bun run --filter '@docx-editor.dev/i18n' build\` complete?`
       );
       continue;
     }

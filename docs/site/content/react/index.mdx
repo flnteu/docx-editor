@@ -1,0 +1,121 @@
+---
+title: '@docx-editor.dev/react'
+description: 'React adapter for the DOCX editor: the packaged root component, provider primitives, shared hooks, and compound chrome, all from the package root.'
+category: 'React'
+order: 30
+---
+
+<PackageStats name="@docx-editor.dev/react" />
+
+## Install
+
+```bash
+npm install @docx-editor.dev/react @docx-editor.dev/core
+```
+
+The adapter holds the engine as a peer, so install both; the string catalog comes with it. Add [`@docx-editor.dev/pro`](/docs/2.x/pro) for tracked changes, comments, and custom nodes, or [`@docx-editor.dev/editor-api`](/docs/2.x/editor-api) to automate the document from code.
+
+## Quickstart
+
+```tsx
+import { DocxEditor } from '@docx-editor.dev/react';
+
+export default function App() {
+  return <DocxEditor document={docxBytes} />;
+}
+```
+
+`<DocxEditor>` is the full packaged editor: title bar, menu, toolbar, navigation pane, hyperlink popover, context menu, and the painted editable document. On Next.js App Router, render it inside a `"use client"` component; the editor has nothing to SSR.
+
+<DemoPlayground />
+
+## Root surface
+
+- `DocxEditor`: the one-line host plus compound statics like `DocxEditor.Root`, `DocxEditor.Viewport`, `DocxEditor.Content`, `DocxEditor.Toolbar`, `DocxEditor.Menu`, `DocxEditor.Navigation`, `DocxEditor.HyperLink`, and `DocxEditor.ContextMenu`
+- hooks from the same root: `useDocxEditor`, `useEditorState`, `useEditorCommand`, `useEditorEvent`, `usePageSetup`, `useParagraphIndent`, `useFontFamily`
+- shared top-level pieces: `DocxEditorRoot`, `DocxEditorViewport`, `DocxEditorContent`, `DocxEditorToolbar`, `DocxEditorMenu`, `DocxEditorNavigation`, `DocxEditorPageSetupDialog`
+
+The review module and sidebar are licensed surfaces in [`@docx-editor.dev/pro`](/docs/2.x/pro); they are not exports of the React adapter.
+
+There is one export path. Components, hooks, and the engine helpers all live on the package root. There are no `/ui`, `/hooks`, or `/dialogs` subpaths.
+
+## Provider primitives
+
+When the packaged chrome is not enough, drop to the same primitives it uses internally:
+
+```tsx
+import { DocxEditor } from '@docx-editor.dev/react';
+
+export function CustomFrame({ bytes }: { bytes: Uint8Array }) {
+  return (
+    <DocxEditor.Root document={bytes}>
+      <DocxEditor.Toolbar />
+      <DocxEditor.Viewport>
+        <DocxEditor.Navigation />
+        <DocxEditor.Content />
+        <DocxEditor.HyperLink />
+        <DocxEditor.ContextMenu />
+      </DocxEditor.Viewport>
+    </DocxEditor.Root>
+  );
+}
+```
+
+## Toolbar
+
+The main chrome compound is exported from the package root as `DocxEditorToolbar`, and attached to the host as `DocxEditor.Toolbar`:
+
+```tsx
+import { DocxEditor, useEditorCommand } from '@docx-editor.dev/react';
+
+function BoldButton() {
+  const bold = useEditorCommand('text.bold');
+  return (
+    <button
+      onMouseDown={(e) => e.preventDefault()} // chrome must not steal the caret
+      onClick={() => bold.execute()}
+      disabled={!bold.isEnabled}
+    >
+      Bold
+    </button>
+  );
+}
+
+export function ToolbarOnly({ bytes }: { bytes: Uint8Array }) {
+  return (
+    <DocxEditor.Root document={bytes}>
+      <DocxEditor.Toolbar>
+        <BoldButton />
+      </DocxEditor.Toolbar>
+      <DocxEditor.Viewport>
+        <DocxEditor.Content />
+      </DocxEditor.Viewport>
+    </DocxEditor.Root>
+  );
+}
+```
+
+The lower-level helpers (`useEditorCommand`, `useEditorState`, `useFontFamily`) also come from the root package.
+
+## Editing API
+
+Drive the open document from code with the Office.js-compatible `@docx-editor.dev/editor-api/browser`, which takes the editor instance this adapter created:
+
+```tsx
+import { useDocxEditor } from '@docx-editor.dev/react';
+import { DocxEditor } from '@docx-editor.dev/editor-api/browser';
+
+const editor = useDocxEditor(); // null until the content is mounted
+const runtime = DocxEditor.createBrowser(editor!);
+```
+
+The object model and its rules are in [Editing API](/docs/2.x/editor-api).
+
+## Next steps
+
+- [Composition](/docs/2.x/react/composition): replace the packaged chrome with your own
+- [Hooks](/docs/2.x/react/hooks): the API every packaged control is built on
+- [Props](/docs/2.x/react/props): `<DocxEditor>` and the imperative ref
+- [Examples](/docs/2.x/react/examples)
+- [Igloo example](https://github.com/eigenpal/docx-editor/tree/main/examples/igloo): a fully re-skinned editor, every customization point in one app
+- [Full API reference](/docs/2.x/api/react)

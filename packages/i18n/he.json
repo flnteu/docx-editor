@@ -2,24 +2,10 @@
   "_lang": "he",
   "common": {
     "cancel": "ביטול",
-    "insert": "הוספה",
     "apply": "החלה",
     "close": "סגירה",
-    "delete": "מחיקה",
-    "update": "עדכון",
-    "save": "שמירה",
-    "retry": "נסה שוב",
-    "send": "שליחה",
-    "edit": "עריכה",
     "comment": "הערה",
-    "reply": "תגובה",
-    "accept": "אישור",
-    "reject": "דחייה",
-    "dismiss": "סגירה",
-    "change": "שינוי",
-    "px": "px",
-    "closeDialog": "סגור חלון",
-    "clear": "נקה"
+    "dismiss": "סגירה"
   },
   "toolbar": {
     "ariaLabel": "סרגל כלים לעיצוב",
@@ -35,13 +21,18 @@
     "table": "טבלה",
     "pageBreak": "מעבר עמוד",
     "tableOfContents": "תוכן עניינים",
-    "symbol": "סמל",
     "help": "עזרה",
     "reportIssue": "דיווח בעיה",
     "open": "פתיחה",
     "openShortcut": "Ctrl+O",
     "save": "שמירה",
-    "saveShortcut": "Ctrl+S"
+    "saveShortcut": "Ctrl+S",
+    "watermark": "סימן מים",
+    "break": "מעבר",
+    "sectionBreakContinuous": "מעבר מקטע (רציף)",
+    "sectionBreakNextPage": "מעבר מקטע (עמוד הבא)",
+    "insertFootnote": "הוסף הערת שוליים",
+    "insertEndnote": "הוסף הערת סוף"
   },
   "formattingBar": {
     "groups": {
@@ -77,7 +68,12 @@
     "subscriptShortcut": "כתב תחתי",
     "imageProperties": "מאפייני תמונה",
     "imagePropertiesShortcut": "מאפייני תמונה",
-    "clearFormatting": "נקה עיצוב"
+    "clearFormatting": "נקה עיצוב",
+    "commentsAndChanges": "הערות ושינויים",
+    "unavailableInPreview": "לא זמין בגרסת תצוגה מקדימה זו",
+    "more": "עוד",
+    "altText": "טקסט חלופי",
+    "imageWrap": "גלישת טקסט"
   },
   "alignment": {
     "alignLeft": "יישור לשמאל",
@@ -102,7 +98,12 @@
     "single": "יחיד",
     "double": "כפול",
     "lineSpacingTitle": "מרחק בין שורות: {label}",
-    "paragraphSpacing": "מרחק בין פסקאות"
+    "blockSpacingRules": "מרחק בין פסקאות",
+    "label": "מרווח בין שורות",
+    "addSpaceAfter": "הוסף רווח אחרי פסקה",
+    "addSpaceBefore": "הוסף רווח לפני פסקה",
+    "removeSpaceAfter": "הסר רווח אחרי פסקה",
+    "removeSpaceBefore": "הסר רווח לפני פסקה"
   },
   "styles": {
     "selectAriaLabel": "בחר סגנון פסקה",
@@ -117,7 +118,8 @@
     "selectAriaLabel": "בחר סוג גופן",
     "sansSerif": "Sans Serif",
     "serif": "Serif",
-    "monospace": "Monospace"
+    "monospace": "Monospace",
+    "documentFonts": "גופני המסמך"
   },
   "fontSize": {
     "decrease": "הקטנת גופן",
@@ -126,10 +128,14 @@
     "listLabel": "גדלי גופן"
   },
   "zoom": {
-    "ariaLabel": "זום: {label}"
+    "ariaLabel": "זום: {label}",
+    "zoomIn": "הגדל תצוגה",
+    "zoomLevel": "רמת זום",
+    "zoomOut": "הקטן תצוגה",
+    "automatic": null,
+    "fitWidth": null
   },
   "colorPicker": {
-    "ariaLabel": "בחר צבע {type}",
     "highlightColors": "צבע סימון",
     "customColor": "בהתאמה אישית",
     "noColor": "ללא צבע",
@@ -145,199 +151,46 @@
       "darkYellow": "צהוב כהה",
       "green": "ירוק",
       "darkGreen": "ירוק כהה",
-      "teal": "טורקיז",
-      "darkTeal": "טורקיז כהה",
       "blue": "כחול",
       "darkBlue": "כחול כהה",
       "purple": "סגול",
-      "darkPurple": "סגול כהה",
-      "brown": "חום",
-      "grey50": "אפור 50%",
-      "grey25": "אפור 25%",
-      "grey10": "אפור 10%",
       "white": "לבן",
-      "lightRed": "אדום בהיר",
-      "lightOrange": "כתום בהיר",
-      "lightYellow": "צהוב בהיר",
       "lightGreen": "ירוק בהיר",
       "lightBlue": "כחול בהיר",
-      "lightPurple": "סגול בהיר",
-      "pink": "ורוד",
-      "rose": "ורוד כהה",
-      "gold": "זהב",
-      "aqua": "טורקיז",
-      "lavender": "לבנדר",
-      "silver": "כסף",
-      "darkOrange": "כתום כהה",
       "darkGray": "אפור כהה",
-      "gray": "אפור",
       "cyan": "ציאן",
       "magenta": "מג'נטה",
-      "paleGreen": "ירוק בהיר",
-      "lightCyan": "ציאן בהיר",
-      "skyBlue": "כחול שמיים",
-      "lightBlue2": "כחול בהיר",
-      "lightMagenta": "מג'נטה בהיר",
       "brightGreen": "ירוק בהיר",
-      "violet": "סגול"
+      "darkCyan": "ציאן כהה",
+      "darkMagenta": "מג'נטה כהה",
+      "lightGray": "אפור בהיר"
+    },
+    "apply": "החל",
+    "theme": {
+      "accent1": "הדגשה 1",
+      "accent2": "הדגשה 2",
+      "accent3": "הדגשה 3",
+      "accent4": "הדגשה 4",
+      "accent5": "הדגשה 5",
+      "accent6": "הדגשה 6",
+      "background1": "רקע 1",
+      "background2": "רקע 2",
+      "text1": "טקסט 1",
+      "text2": "טקסט 2"
     }
   },
   "dialogs": {
-    "findReplace": {
-      "titleFind": "חפש",
-      "titleFindReplace": "חפש והחלף",
-      "findLabel": "חפש:",
-      "findPlaceholder": "הזן טקסט לחיפוש...",
-      "findAriaLabel": "חיפוש טקסט",
-      "findPrevious": "הקודם",
-      "findPreviousTitle": "הקודם (Shift+Enter)",
-      "findNext": "הבא",
-      "findNextTitle": "הבא (Enter)",
-      "matchCount": "{current} מתוך {total} תוצאות",
-      "noResults": "לא נמצאו תוצאות",
-      "replaceLabel": "טקסט להחלפה:",
-      "replacePlaceholder": "הזן טקסט להחלפה...",
-      "replaceAriaLabel": "טקסט להחלפה",
-      "replaceButton": "החלף",
-      "replaceCurrentTitle": "החלף את התוצאה הנוכחית",
-      "replaceAllButton": "החלף הכול",
-      "replaceAllTitle": "החלף את כל התוצאות",
-      "matchCase": "התאמה לאותיות רישיות",
-      "wholeWords": "חיפוש לפי מילה שלמה",
-      "toggleReplace": "+ החלף",
-      "matchesFound": "{total} תוצאות"
-    },
-    "hyperlink": {
-      "titleEdit": "ערוך קישור",
-      "titleInsert": "הוסף קישור",
-      "tabWebAddress": "כתובת אינטרנט",
-      "tabBookmark": "סימניה",
-      "urlLabel": "כתובת",
-      "urlPlaceholder": "https://example.com",
-      "urlHint": "הזן כתובת אתר, אימייל (mailto:) או טלפון (tel:)",
-      "bookmarkLabel": "סימניה",
-      "bookmarkPlaceholder": "בחר סימניה...",
-      "displayTextLabel": "טקסט להצגה",
-      "displayTextPlaceholder": "טקסט להצגה (אופציונלי)",
-      "displayTextHint": "השאר ריק כדי להשתמש בטקסט המסומן",
-      "tooltipLabel": "טקסט עזר",
-      "tooltipPlaceholder": "טקסט שמופיע בעת ריחוף (אופציונלי)",
-      "removeLink": "הסר קישור",
-      "invalidUrl": "כתובת לא תקינה",
-      "urlRequired": "יש להזין כתובת"
-    },
-    "insertTable": {
-      "title": "הוסף טבלה",
-      "hoverToSelect": "רחף כדי לבחור גודל",
-      "tableSize": "טבלה בגודל {cols} × {rows}",
-      "orSpecifySize": "או ציין גודל",
-      "rowsLabel": "שורות:",
-      "columnsLabel": "עמודות:",
-      "insertButton": "הוסף טבלה",
-      "sizeSelector": "בחירת גודל טבלה",
-      "autofit": "התאמה אוטומטית לתוכן",
-      "columnWidthLabel": "רוחב עמודה",
-      "fixedWidth": "קבוע",
-      "tableStyleLabel": "סגנון טבלה",
-      "validationHint": "שורות: {minRows}-{maxRows}, עמודות: {minCols}-{maxCols}"
-    },
-    "splitCell": {
-      "title": "פצל תא",
-      "description": "בחר לכמה שורות ועמודות לפצל את התא הנבחר.",
-      "rowsLabel": "שורות:",
-      "columnsLabel": "עמודות:",
-      "currentMinimum": "מינימום לפי הפיצול הנוכחי: {rows} שורה(ות) × {cols} עמודה(ות)",
-      "minValue": "יש לבחור לפחות {rows} שורה(ות) ו־{cols} עמודה(ות).",
-      "notOneByOne": "יש לבחור לפחות שני תאים לאחר הפיצול."
-    },
-    "insertImage": {
-      "title": "הוסף תמונה",
-      "uploadAriaLabel": "לחץ או גרור להעלאת תמונה",
-      "uploadText": "לחץ לבחירה או גרור ושחרר תמונה",
-      "uploadSubtext": "PNG, JPG, GIF עד 10MB",
-      "dimensions": "מידות",
-      "widthLabel": "רוחב:",
-      "heightLabel": "גובה:",
-      "aspectRatioLocked": "יחס גובה-רוחב נעול",
-      "aspectRatioUnlocked": "יחס גובה-רוחב פתוח",
-      "altTextLabel": "טקסט חלופי (אופציונלי)",
-      "altTextPlaceholder": "תאר את התמונה לצורכי נגישות",
-      "insertButton": "הוסף תמונה",
-      "invalidFile": "יש לבחור קובץ תמונה תקין",
-      "fileTooLarge": "קובץ התמונה גדול מדי (מקסימום 10MB)",
-      "readFailed": "קריאת קובץ התמונה נכשלה",
-      "loadFailed": "טעינת התמונה נכשלה",
-      "preview": "תצוגה מקדימה"
-    },
-    "insertSymbol": {
-      "title": "הוסף סימן",
-      "searchPlaceholder": "חפש סימנים (תו או Unicode)...",
-      "noResults": "לא נמצאו סימנים עבור \"{query}\"",
-      "decimal": "עשרוני: {value}",
-      "categories": {
-        "common": "נפוצים",
-        "arrows": "חצים",
-        "math": "מתמטיקה",
-        "greek": "יוונית",
-        "shapes": "צורות",
-        "punctuation": "סימני פיסוק",
-        "currency": "מטבעות",
-        "music": "מוזיקה",
-        "emoji": "אימוג'י"
-      },
-      "noResultsEmpty": "לא נמצאו סימנים",
-      "recent": "אחרונים:"
-    },
     "imageProperties": {
       "title": "מאפייני תמונה",
       "altText": "טקסט חלופי",
       "altTextPlaceholder": "תאר את התמונה לצורכי נגישות...",
-      "border": "מסגרת",
-      "width": "רוחב",
-      "style": "סגנון",
-      "color": "צבע",
-      "preview": "תצוגה מקדימה",
-      "borderStyles": {
-        "solid": "קו רציף",
-        "dashed": "קו מקווקו",
-        "dotted": "קו מנוקד",
-        "double": "קו כפול",
-        "groove": "חריץ",
-        "ridge": "בליטה",
-        "inset": "פנימי",
-        "outset": "חיצוני"
-      },
       "dimensions": "ממדים",
       "heightLabel": "גובה:",
       "lockAspectRatio": "נעל יחס גובה-רוחב",
       "textWrapping": "גלישת טקסט",
-      "widthLabel": "רוחב:",
-      "wrapOptions": {
-        "behind": "מאחורי הטקסט",
-        "inFront": "לפני הטקסט",
-        "inline": "בתוך שורת הטקסט",
-        "topAndBottom": "מעל ומתחת",
-        "wrapLeft": "גלישת טקסט, צף ימינה",
-        "wrapRight": "גלישת טקסט, צף שמאלה"
-      }
+      "widthLabel": "רוחב:"
     },
     "imagePosition": {
-      "title": "מיקום תמונה",
-      "horizontal": "אופקי",
-      "vertical": "אנכי",
-      "position": "מיקום",
-      "alignment": "יישור",
-      "offset": "היסט",
-      "offsetPx": "היסט (px)",
-      "align": "יישר",
-      "relativeTo": "יחסית ל־",
-      "alignOptions": {
-        "left": "שמאל",
-        "center": "מרכז",
-        "right": "ימין",
-        "top": "למעלה",
-        "bottom": "למטה"
-      },
       "relativeOptions": {
         "page": "עמוד",
         "column": "עמודה",
@@ -368,40 +221,10 @@
         "a5": "A5 (5.83\" × 8.27\")",
         "b5": "B5 (6.93\" × 9.84\")",
         "executive": "Executive (7.25\" × 10.5\")"
-      }
-    },
-    "tableProperties": {
-      "title": "מאפייני טבלה",
-      "widthType": "סוג רוחב",
-      "widthLabel": "רוחב",
-      "alignmentLabel": "יישור",
-      "widthTypes": {
-        "auto": "אוטומטי",
-        "fixed": "קבוע (twips)",
-        "percentage": "אחוזים"
       },
-      "units": {
-        "fiftiethsPercent": "(חלקי 50 מאחוז)",
-        "twips": "tw"
-      },
-      "alignOptions": {
-        "left": "שמאל",
-        "center": "מרכז",
-        "right": "ימין"
-      }
-    },
-    "pasteSpecial": {
-      "title": "הדבקה מיוחדת",
-      "keepFormatting": "שמור על עיצוב המקור",
-      "keepFormattingDescription": "הדבק עם העיצוב המקורי",
-      "keepFormattingShortcut": "Ctrl+V",
-      "plainText": "הדבק כטקסט רגיל",
-      "plainTextDescription": "הדבק ללא עיצוב",
-      "plainTextShortcut": "Ctrl+Shift+V",
-      "readingClipboard": "קורא את הלוח...",
-      "preview": "תצוגה מקדימה:",
-      "noContent": "אין תוכן זמין להדבקה",
-      "clipboardError": "לא ניתן לקרוא מהלוח. השתמש ב־Ctrl+V להדבקה."
+      "applyTo": "החל על",
+      "applyToDocument": "כל המסמך",
+      "applyToSection": "מקטע זה"
     },
     "footnoteProperties": {
       "title": "מאפייני הערות שוליים והערות סיום",
@@ -409,7 +232,6 @@
       "endnotes": "הערות סיום",
       "position": "מיקום",
       "numberFormat": "פורמט מספר",
-      "startAt": "התחל מ־",
       "numbering": "מספור",
       "footnotePositions": {
         "bottomOfPage": "בתחתית העמוד",
@@ -427,158 +249,31 @@
       "formats": {
         "decimal": "1, 2, 3, ...",
         "lowerRoman": "i, ii, iii, ...",
-        "upperRoman": "I, II, III, ...",
-        "lowerAlpha": "a, b, c, ...",
-        "upperAlpha": "A, B, C, ...",
-        "symbols": "*, †, ‡, ..."
+        "upperRoman": "I, II, III, ..."
       }
-    },
-    "keyboardShortcuts": {
-      "ariaLabel": "קיצורי מקלדת",
-      "searchPlaceholder": "חפש קיצורים...",
-      "categories": {
-        "editing": "עריכה",
-        "formatting": "עיצוב",
-        "navigation": "ניווט",
-        "clipboard": "לוח",
-        "selection": "בחירה",
-        "view": "תצוגה",
-        "file": "קובץ",
-        "other": "אחר"
-      },
-      "shortcuts": {
-        "save": "שמור",
-        "saveDescription": "שמור מסמך",
-        "print": "הדפס",
-        "printDescription": "הדפס מסמך",
-        "undo": "בטל",
-        "undoDescription": "בטל פעולה אחרונה",
-        "redo": "בצע שוב",
-        "redoDescription": "בצע שוב פעולה אחרונה",
-        "delete": "מחק",
-        "deleteDescription": "מחק טקסט מסומן",
-        "find": "חפש",
-        "findDescription": "חפש טקסט במסמך",
-        "findReplace": "חפש והחלף",
-        "findReplaceDescription": "חפש והחלף טקסט",
-        "cut": "גזור",
-        "cutDescription": "גזור טקסט מסומן",
-        "copy": "העתק",
-        "copyDescription": "העתק טקסט מסומן",
-        "paste": "הדבק",
-        "pasteDescription": "הדבק מהלוח",
-        "pastePlainText": "הדבק כטקסט רגיל",
-        "pastePlainTextDescription": "הדבק ללא עיצוב",
-        "bold": "הדגש",
-        "boldDescription": "הפעל/כבה הדגשה",
-        "italic": "הטה",
-        "italicDescription": "הפעל/כבה נטוי",
-        "underline": "קו תחתון",
-        "underlineDescription": "הפעל/כבה קו תחתון",
-        "strikethrough": "קו חוצה",
-        "strikethroughDescription": "הפעל/כבה קו חוצה",
-        "subscript": "כתב תחתי",
-        "subscriptDescription": "הפעל/כבה כתב תחתי",
-        "superscript": "כתב עילי",
-        "superscriptDescription": "הפעל/כבה כתב עילי",
-        "alignLeft": "יישור לשמאל",
-        "alignLeftDescription": "יישר פסקה לשמאל",
-        "alignCenter": "יישור למרכז",
-        "alignCenterDescription": "יישר פסקה למרכז",
-        "alignRight": "יישור לימין",
-        "alignRightDescription": "יישר פסקה לימין",
-        "justify": "יישור מלא",
-        "justifyDescription": "יישר פסקה לשני הצדדים",
-        "increaseIndent": "הגדל הזחה",
-        "increaseIndentDescription": "הגדל הזחת פסקה",
-        "decreaseIndent": "הקטן הזחה",
-        "decreaseIndentDescription": "הקטן הזחת פסקה",
-        "selectAll": "בחר הכל",
-        "selectAllDescription": "בחר את כל התוכן",
-        "selectWord": "בחר מילה",
-        "selectWordDescription": "בחר את המילה הנוכחית",
-        "selectParagraph": "בחר פסקה",
-        "selectParagraphDescription": "בחר את הפסקה הנוכחית",
-        "extendSelectionByWord": "הרחב בחירה לפי מילה",
-        "extendSelectionByWordDescription": "הרחב בחירה למילה הבאה או הקודמת",
-        "extendSelectionToLineEdge": "הרחב בחירה לקצה שורה",
-        "extendSelectionToLineEdgeDescription": "הרחב בחירה לתחילת או סוף השורה",
-        "moveByWord": "תנועה לפי מילה",
-        "moveByWordDescription": "הזז את הסמן למילה הבאה או הקודמת",
-        "moveToLineStart": "לתחילת שורה",
-        "moveToLineStartDescription": "העבר את הסמן לתחילת השורה",
-        "moveToLineEnd": "לסוף שורה",
-        "moveToLineEndDescription": "העבר את הסמן לסוף השורה",
-        "moveToDocumentStart": "לתחילת מסמך",
-        "moveToDocumentStartDescription": "העבר את הסמן לתחילת המסמך",
-        "moveToDocumentEnd": "לסוף מסמך",
-        "moveToDocumentEndDescription": "העבר את הסמן לסוף המסמך",
-        "pageUp": "עמוד למעלה",
-        "pageUpDescription": "גלול למעלה עמוד אחד",
-        "pageDown": "עמוד למטה",
-        "pageDownDescription": "גלול למטה עמוד אחד",
-        "zoomIn": "הגדל תצוגה",
-        "zoomInDescription": "הגדל את רמת הזום",
-        "zoomOut": "הקטן תצוגה",
-        "zoomOutDescription": "הקטן את רמת הזום",
-        "resetZoom": "אפס זום",
-        "resetZoomDescription": "אפס את הזום ל־100%",
-        "keyboardShortcuts": "קיצורי מקלדת",
-        "keyboardShortcutsDescription": "הצג את חלון העזרה",
-        "insertLink": "הוסף קישור",
-        "insertLinkDescription": "הוסף או ערוך קישור"
-      },
-      "noResults": "לא נמצאו קיצורים עבור \"{query}\"",
-      "pressEscToClose": "לחץ {key} כדי לסגור",
-      "or": "או"
     }
   },
   "comments": {
-    "resolved": "נפתר",
-    "resolve": "סמן כנפתר",
-    "reopen": "פתח מחדש",
-    "moreOptions": "אפשרויות נוספות",
     "unknown": "לא ידוע",
     "addComment": "הוסף תגובה...",
     "replyPlaceholder": "השב או הוסף אחרים עם @",
-    "replyCount": "{count, plural, one {תגובה אחת} other {# תגובות}}"
-  },
-  "trackedChanges": {
-    "unknown": "לא ידוע",
-    "replaced": "הוחלף",
-    "with": "עם",
-    "added": "נוסף",
-    "deleted": "נמחק"
+    "reopen": null,
+    "resolve": null
   },
   "contextMenu": {
     "ariaLabel": "תפריט פעולות AI",
-    "textMenuAriaLabel": "תפריט עריכת טקסט",
-    "customPromptPlaceholder": "הזן בקשה מותאמת...",
     "cut": "גזור",
     "cutShortcut": "Ctrl+X",
     "copy": "העתק",
     "copyShortcut": "Ctrl+C",
     "paste": "הדבק",
     "pasteShortcut": "Ctrl+V",
-    "pastePlainText": "הדבק כטקסט רגיל",
-    "pastePlainTextShortcut": "Ctrl+Shift+V",
     "delete": "מחק",
     "deleteShortcut": "Del",
     "selectAll": "בחר הכל",
     "selectAllShortcut": "Ctrl+A",
-    "selected": "נבחר:",
-    "aiActions": {
-      "askAi": "שאל את ה־AI",
-      "rewrite": "שכתב",
-      "expand": "הרחב",
-      "summarize": "סכם",
-      "translate": "תרגם",
-      "explain": "הסבר",
-      "fixGrammar": "תקן דקדוק",
-      "makeFormal": "הפוך לרשמי",
-      "makeCasual": "הפוך ללא רשמי",
-      "custom": "מותאם אישית"
-    }
+    "editCustomNode": "ערוך {label}",
+    "removeCustomNode": "הסר {label}"
   },
   "documentOutline": {
     "ariaLabel": "מתווה המסמך",
@@ -587,18 +282,12 @@
     "title": "מתווה",
     "noHeadings": "לא נמצאו כותרות. הוסף כותרות למסמך כדי לראות אותן כאן."
   },
-  "sidebar": {
-    "ariaLabel": "סרגל הערות"
-  },
   "titleBar": {
     "untitled": "ללא שם",
     "documentNameAriaLabel": "שם המסמך",
     "menuBarAriaLabel": "שורת התפריטים"
   },
   "errors": {
-    "loadingDocument": "טוען מסמך...",
-    "noDocumentLoaded": "לא נטען מסמך",
-    "failedToLoad": "טעינת המסמך נכשלה",
     "unableToParse": "לא ניתן לעבד את המסמך",
     "somethingWentWrong": "משהו השתבש",
     "errorDescription": "אירעה שגיאה בעת הצגת רכיב זה. נסה שוב או פנה לתמיכה אם הבעיה נמשכת.",
@@ -606,8 +295,7 @@
     "componentStack": "מחסנית רכיבים:",
     "tryAgain": "נסה שוב",
     "showDetails": "הצג פרטים",
-    "hideDetails": "הסתר פרטים",
-    "unsavedChanges": "יש לך שינויים שלא נשמרו. האם אתה בטוח שברצונך לצאת?"
+    "hideDetails": "הסתר פרטים"
   },
   "table": {
     "insertRowAbove": "הוסף שורה מעל",
@@ -624,13 +312,11 @@
     "cellFillColor": "צבע מילוי תא",
     "borderColor": "צבע מסגרת",
     "borderWidth": "עובי מסגרת",
-    "unknownAction": "פעולה לא ידועה",
     "borders": {
       "all": "כל המסגרות",
       "outside": "מסגרות חיצוניות",
       "inside": "מסגרות פנימיות",
       "none": "ללא מסגרות",
-      "remove": "הסר מסגרות",
       "top": "מסגרת עליונה",
       "bottom": "מסגרת תחתונה",
       "left": "מסגרת שמאלית",
@@ -639,46 +325,30 @@
       "tooltip": "מסגרות"
     },
     "moreOptions": "אפשרויות טבלה נוספות",
-    "styles": {
-      "title": "סגנונות טבלה",
-      "label": "סגנונות",
-      "normalTable": "טבלה רגילה",
-      "tableGrid": "רשת טבלה",
-      "gridTableLight": "רשת טבלה בהירה",
-      "plainTable1": "טבלה פשוטה 1",
-      "plainTable2": "טבלה פשוטה 2",
-      "plainTable3": "טבלה פשוטה 3",
-      "plainTable4": "טבלה פשוטה 4",
-      "gridTable1Light": "רשת טבלה 1 בהירה",
-      "gridTable4Accent1": "רשת טבלה 4 הדגשה 1",
-      "gridTable5Dark": "רשת טבלה 5 כהה",
-      "listTable3Accent2": "טבלת רשימה 3 הדגשה 2",
-      "listTable4Accent3": "טבלת רשימה 4 הדגשה 3",
-      "gridTable4Accent5": "רשת טבלה 4 הדגשה 5",
-      "gridTable4Accent6": "רשת טבלה 4 הדגשה 6"
-    }
+    "selectTable": "בחר את הטבלה כולה",
+    "borderStyles": {
+      "dashed": "מקווקו",
+      "dotted": "מנוקד",
+      "double": "כפול",
+      "single": "רציף",
+      "thick": "עבה",
+      "triple": "משולש"
+    },
+    "borderWidths": {
+      "halfPt": "0.5 נק'",
+      "oneHalfPt": "1.5 נק'",
+      "onePt": "1 נק'",
+      "threePt": "3 נק'",
+      "twoPt": "2 נק'"
+    },
+    "clearCellFill": "נקה מילוי תא"
   },
   "tableAdvanced": {
     "verticalAlignment": "יישור אנכי",
     "top": "למעלה",
     "middle": "מרכז",
     "bottom": "למטה",
-    "cellMargins": "שוליים בתא",
-    "textDirection": "כיוון טקסט",
-    "textDirections": {
-      "horizontal": "אופקי (שמאל-ימין)",
-      "verticalRL": "אנכי (מלמעלה למטה, ימין-שמאל)",
-      "verticalLR": "אנכי (מלמטה למעלה, שמאל-ימין)"
-    },
     "toggleNoWrap": "הפעל/בטל גלישת טקסט",
-    "rowHeight": "גובה שורה",
-    "heightRules": {
-      "auto": "אוטומטי",
-      "atLeast": "לפחות",
-      "exact": "מדויק"
-    },
-    "rule": "כלל",
-    "height": "גובה",
     "toggleHeaderRow": "הפעל/בטל שורת כותרת",
     "distributeColumns": "פזר עמודות באופן שווה",
     "autoFit": "התאם אוטומטית לתוכן",
@@ -686,9 +356,7 @@
     "tableAlignment": "יישור טבלה",
     "alignTableLeft": "יישר טבלה לשמאל",
     "alignTableCenter": "יישר טבלה למרכז",
-    "alignTableRight": "יישר טבלה לימין",
-    "tableOptionsMenu": "תפריט אפשרויות טבלה",
-    "tableOptions": "אפשרויות טבלה"
+    "alignTableRight": "יישר טבלה לימין"
   },
   "imageTransform": {
     "tooltip": "טרנספורמציה",
@@ -707,55 +375,45 @@
     "tooltipPrefix": "גלישה: {label}",
     "menu": {
       "ariaLabel": "אפשרויות פריסת תמונה",
-      "behindText": "מאחורי הטקסט",
-      "inFrontOfText": "לפני הטקסט",
       "inLineWithText": "בתוך שורת הטקסט",
       "squareLeft": "ריבוע משמאל",
-      "squareRight": "ריבוע מימין",
-      "imageProperties": "מאפייני תמונה…"
+      "squareRight": "ריבוע מימין"
     },
-    "menuDesc": {
-      "behindText": "התמונה מאחורי הטקסט",
-      "inFrontOfText": "התמונה לפני הטקסט",
-      "inLineWithText": "התמונה זורמת בשורה כתו",
-      "squareLeft": "תמונה משמאל, טקסט גולש מימין",
-      "squareRight": "תמונה מימין, טקסט גולש משמאל"
-    }
-  },
-  "responsePreview": {
-    "loading": "{action}...",
-    "result": "תוצאת {action}",
-    "closeEsc": "סגור (Esc)",
-    "editPrompt": "ערוך את התוצאה לפני האישור:",
-    "changes": "שינויים:",
-    "original": "מקור:",
-    "new": "חדש:",
-    "cancelEdit": "בטל עריכה"
-  },
-  "commentMarkers": {
-    "resolvedComment": "תגובה שטופלה",
-    "comment": "תגובה"
+    "square": "ריבוע",
+    "targets": {
+      "behind": "מאחורי הטקסט",
+      "inFront": "לפני הטקסט",
+      "inline": "בשורה עם הטקסט",
+      "square": "ריבוע",
+      "squareLeft": "ריבוע משמאל",
+      "squareRight": "ריבוע מימין",
+      "through": "דרך",
+      "tight": "הדוק",
+      "topAndBottom": "למעלה ולמטה"
+    },
+    "through": "דרך",
+    "tight": "הדוק"
   },
   "editor": {
-    "toggleCommentsSidebar": "הצג/הסתר סרגל תגובות",
     "showDocumentOutline": "הצג מתאר מסמך",
-    "editing": "עריכה",
-    "editingDescription": "ערוך את המסמך ישירות",
-    "suggesting": "הצעות",
-    "suggestingDescription": "עריכות יוצגו כהצעות",
-    "viewing": "צפייה",
-    "viewingDescription": "קריאה בלבד, ללא עריכה",
-    "failedToParse": "שגיאה בפתיחת המסמך",
-    "linkRemoved": "הקישור הוסר",
     "linkCopied": "הקישור הועתק ללוח",
-    "failedToSave": "שגיאה בשמירת המסמך"
+    "fontSubstitutionNotice": "חלק מהגופנים במסמך זה אינם זמינים, ולכן מוצגים גופנים חלופיים: {fonts}"
   },
   "hyperlinkPopup": {
     "displayTextPlaceholder": "טקסט לתצוגה",
     "urlPlaceholder": "https://example.com",
     "copyLink": "העתק קישור",
     "editLink": "ערוך קישור",
-    "removeLink": "הסר קישור"
+    "removeLink": "הסר קישור",
+    "apply": "החל",
+    "bookmarkTarget": "מוביל למיקום במסמך זה",
+    "cancel": "ביטול",
+    "editTitle": "ערוך קישור",
+    "inertTarget": "קישור זה מצביע על יעד שהעורך לא יפתח",
+    "insertTitle": "הוסף קישור",
+    "openLink": "פתח קישור",
+    "refused": "לא ניתן להחיל את הקישור. בדוק את הכתובת ונסה שוב.",
+    "urlLabel": "כתובת URL"
   },
   "headerFooter": {
     "header": "כותרת עליונה",
@@ -763,13 +421,35 @@
     "options": "אפשרויות",
     "insertPageNumber": "הוסף מספר עמוד נוכחי",
     "insertTotalPages": "הוסף סך כל העמודים",
-    "remove": "הסר {label}",
-    "closeEditing": "סגור עריכת {label}"
+    "chromeAriaLabel": "עריכת כותרות עליונה ותחתונה",
+    "firstPageHeader": "כותרת עליונה של העמוד הראשון",
+    "firstPageFooter": "כותרת תחתונה של העמוד הראשון",
+    "evenPageHeader": "כותרת עליונה של עמודים זוגיים",
+    "evenPageFooter": "כותרת תחתונה של עמודים זוגיים",
+    "sameAsPrevious": "זהה לקודם",
+    "sameAsPreviousHint": "עריכות חלות גם על עמודי המקטע הקודם.",
+    "differentFirstPage": "עמוד ראשון שונה",
+    "differentOddEven": "עמודים זוגיים ואי-זוגיים שונים",
+    "differentOddEvenHint": "חל על כל המסמך.",
+    "linkToPrevious": "קשר לקודם",
+    "unlinkFromPrevious": "נתק מהקודם",
+    "headerDistance": "מרחק כותרת עליונה מהקצה",
+    "footerDistance": "מרחק כותרת תחתונה מהקצה",
+    "removeHeader": "הסר כותרת עליונה",
+    "removeFooter": "הסר כותרת תחתונה",
+    "insertSectionPages": "הוסף מספר עמודים במקטע",
+    "insertPageXofY": "הוסף עמוד X מתוך Y"
   },
   "image": {
-    "placeholder": "מיקום תמונה",
-    "placeholderText": "[תמונה]",
-    "editableAriaLabel": "תמונה הניתנת לעריכה"
+    "contentMismatch": "תוכן התמונה אינו תואם לסוג שלה",
+    "decodeFailed": "לא ניתן לפענח את התמונה",
+    "externalResource": "תמונה חיצונית לא נטענה",
+    "invalidResource": "תמונה לא חוקית",
+    "missingResource": "תמונה חסרה",
+    "nonPictureGraphic": "גרפיקה לא נתמכת ({kind})",
+    "pendingResource": "טוען תמונה",
+    "resourceLimit": "התמונה חורגת ממגבלות הגודל",
+    "unsupportedFormat": "תבנית תמונה לא נתמכת ({format})"
   },
   "ruler": {
     "horizontal": "סרגל אופקי",
@@ -778,60 +458,190 @@
     "leftIndent": "כניסה שמאלית",
     "rightIndent": "כניסה ימנית",
     "topMargin": "שוליים עליונים",
-    "bottomMargin": "שוליים תחתונים"
-  },
-  "print": {
-    "label": "הדפסה",
-    "allPages": "הכל ({totalPages} עמודים)",
-    "singlePage": "עמוד {start}",
-    "pageRange": "עמודים {start}-{end}"
-  },
-  "unsaved": {
-    "unsaved": "לא שמור",
-    "saved": "שמור",
-    "unsavedTitle": "המסמך כולל שינויים שלא נשמרו",
-    "savedTitle": "כל השינויים נשמרו",
-    "unsavedAriaLabel": "שינויים שלא נשמרו",
-    "savedAriaLabel": "כל השינויים נשמרו"
+    "bottomMargin": "שוליים תחתונים",
+    "hangingIndent": "כניסה תלויה"
   },
   "loading": {
     "label": "טוען"
-  },
-  "agentPanel": {
-    "defaultTitle": "עוזר",
-    "toggle": "פתח עוזר",
-    "close": "סגור חלונית",
-    "resizeHandle": "שנה גודל חלונית העוזר",
-    "thinking": "העוזר מעבד...",
-    "composerPlaceholder": "שאל את העוזר…",
-    "send": "שלח",
-    "timeline": {
-      "working": "{count, plural, one {עובד על # שלב} other {עובד על # שלבים}}",
-      "summary": "{count, plural, one {# שלב} other {# שלבים}}",
-      "earlier": "{count, plural, one {+ # שלב קודם} other {+ # שלבים קודמים}}"
-    }
   },
   "viewer": {
     "pageIndicator": "{current} מתוך {total}"
   },
   "imageOverlay": {
-    "deleteImage": "מחק תמונה",
-    "imageProperties": "מאפייני תמונה",
-    "rotate": "סובב"
+    "handle": {
+      "e": "שנה גודל בקצה הימני",
+      "n": "שנה גודל בקצה העליון",
+      "ne": "שנה גודל בפינה הימנית העליונה",
+      "nw": "שנה גודל בפינה השמאלית העליונה",
+      "s": "שנה גודל בקצה התחתון",
+      "se": "שנה גודל בפינה הימנית התחתונה",
+      "sw": "שנה גודל בפינה השמאלית התחתונה",
+      "w": "שנה גודל בקצה השמאלי"
+    },
+    "selection": "תמונה נבחרת"
   },
   "revisions": {
-    "cellDeleted": null,
-    "cellInserted": null,
-    "cellMerged": null,
-    "cellPropertiesChanged": null,
+    "paragraphMarkInserted": "סימן פסקה נוסף",
+    "runPropertiesChanged": "עיצוב הטקסט שונה",
     "paragraphMarkDeleted": null,
-    "paragraphMarkInserted": null,
-    "paragraphPropertiesChanged": null,
-    "rowDeleted": null,
-    "rowInserted": null,
-    "rowPropertiesChanged": null,
-    "tablePropertiesChanged": null,
-    "tableDeleted": null,
-    "tableInserted": null
+    "paragraphMarkMovedFrom": null,
+    "paragraphMarkMovedTo": null
+  },
+  "toc": {
+    "refresh": "עדכון הטבלה כולה",
+    "refreshPageNumbers": "עדכון מספרי עמודים בלבד"
+  },
+  "editingMode": {
+    "editing": "עריכה",
+    "label": "מצב עריכה",
+    "editingHint": "ערוך את המסמך ישירות",
+    "suggesting": "הצעות",
+    "suggestingHint": "עריכות הופכות להצעות",
+    "viewing": "תצוגה",
+    "viewingHint": "לקריאה בלבד, ללא עריכות"
+  },
+  "navigation": {
+    "ariaLabel": "ניווט במסמך",
+    "closeAriaLabel": "סגור ניווט",
+    "closeTitle": "סגור ניווט",
+    "find": {
+      "clearAriaLabel": "נקה חיפוש",
+      "counter": "תוצאה {current} מתוך {total}",
+      "counterTruncated": "תוצאה {current} מתוך {total}+",
+      "inputAriaLabel": "חפש במסמך",
+      "matchCase": "התאם רישיות",
+      "nextAriaLabel": "התוצאה הבאה",
+      "noResults": "אין תוצאות",
+      "optionsAriaLabel": "אפשרויות חיפוש",
+      "placeholder": "חפש במסמך",
+      "previousAriaLabel": "התוצאה הקודמת",
+      "resultsAriaLabel": "תוצאות חיפוש",
+      "searching": "מחפש…",
+      "wholeWord": "מילים שלמות בלבד",
+      "total": "{total, plural, one {תוצאה אחת} other {# תוצאות}}",
+      "totalTruncated": "{total, plural, other {#+ תוצאות}}"
+    },
+    "headings": {
+      "noHeadings": "לא נמצאו כותרות. הוסף כותרות למסמך כדי לראות אותן כאן."
+    },
+    "openAriaLabel": "פתח ניווט",
+    "openTitle": "ניווט",
+    "tabs": {
+      "find": "חיפוש",
+      "headings": "כותרות"
+    },
+    "title": "ניווט"
+  },
+  "contentControl": {
+    "formFill": "מצב מילוי טפסים",
+    "group": "מפקדי תוכן",
+    "inspector": "מאפייני מפקד תוכן",
+    "inspectorPanel": {
+      "alias": "כותרת",
+      "bound": "קשור לנתונים",
+      "boundNote": "מפקד זה קשור לנתונים חיצוניים. עריכה נדחית.",
+      "empty": "—",
+      "lock": "נעילה",
+      "lockedNote": "עריכת התוכן נעולה במפקד זה.",
+      "no": "לא",
+      "placeholder": "טקסט מציין מיקום",
+      "tag": "תג",
+      "title": "מפקד תוכן",
+      "type": "סוג",
+      "yes": "כן"
+    },
+    "lock": {
+      "contentLocked": "תוכן נעול",
+      "sdtContentLocked": "מפקד תוכן ותוכן נעולים",
+      "sdtLocked": "מפקד תוכן נעול",
+      "unlocked": "לא נעול"
+    },
+    "remove": "הסר מפקד תוכן",
+    "showAll": "הצג גבולות מפקדי תוכן",
+    "types": {
+      "checkbox": "תיבת סימון",
+      "comboBox": "תיבה משולבת",
+      "date": "תאריך",
+      "dropdown": "רשימה נפתחת",
+      "picture": "תמונה",
+      "plainText": "טקסט רגיל",
+      "repeatingSection": "מקטע חוזר",
+      "richText": "טקסט מעוצב"
+    }
+  },
+  "notes": {
+    "delete": "מחק הערה",
+    "convertToEndnote": "המר להערת סוף",
+    "convertToFootnote": "המר להערת שוליים",
+    "scope": "החל על",
+    "scopeDocument": "כל המסמך",
+    "scopeSection": "מקטע זה",
+    "previewFallback": "הערת שוליים",
+    "chromeAriaLabel": "עריכת הערות",
+    "editingRegion": "{kind} {number}",
+    "footnoteKind": "הערת שוליים",
+    "endnoteKind": "הערת סוף",
+    "convertAllFootnotes": "המר את כל הערות השוליים להערות סוף",
+    "convertAllEndnotes": "המר את כל הערות הסוף להערות שוליים",
+    "inheritedValue": "(בירושה)"
+  },
+  "review": {
+    "accept": "קבל",
+    "ariaLabel": "סקירה",
+    "commentRefused": "לא ניתן להוסיף את ההערה",
+    "deleted": "נמחק",
+    "empty": "אין שינויים או הערות",
+    "inserted": "נוסף",
+    "movedFrom": "הועבר מכאן",
+    "movedTo": "הועבר לכאן",
+    "reject": "דחה",
+    "replaced": "הוחלף",
+    "replacedWith": "ב-",
+    "reply": "השב",
+    "replyRefused": "לא ניתן לפרסם את התשובה",
+    "showPane": "הצג הערות",
+    "structural": "מבנה המסמך שונה",
+    "deleteComment": "מחק הערה",
+    "discardChange": "בטל שינוי"
+  },
+  "imageAltText": {
+    "description": "תיאור",
+    "panelTitle": "טקסט חלופי",
+    "title": "כותרת"
+  },
+  "imageInsert": {
+    "errors": {
+      "emptyFile": "הקובץ שנבחר ריק.",
+      "invalidSignature": "הקובץ אינו תמונת PNG, JPEG או GIF נתמכת.",
+      "oversize": "התמונה חורגת מהגודל המרבי המותר.",
+      "refused": "לא ניתן להוסיף את התמונה.",
+      "unsupportedFormat": "תבנית תמונה זו אינה נתמכת להוספה."
+    }
+  },
+  "imageProperties": {
+    "crop": "חיתוך",
+    "cropBottom": "למטה (%)",
+    "cropLeft": "שמאל (%)",
+    "cropRight": "ימין (%)",
+    "cropTop": "למעלה (%)",
+    "errors": {
+      "invalidCrop": "ערכי החיתוך חייבים להיות אחוזים בין 0 ל-100.",
+      "invalidDimensions": "הזן ערכי רוחב וגובה חיוביים.",
+      "refused": "לא ניתן להחיל מאפיינים אלה.",
+      "invalidPosition": "הזן ערכי מיקום אופקי ואנכי חוקיים."
+    },
+    "hyperlink": "היפר-קישור",
+    "nonPictureHint": "חיתוך ואיפוס לגודל המקורי זמינים רק עבור תמונות.",
+    "resetNaturalSize": "אפס לגודל המקורי",
+    "units": {
+      "points": "נק'"
+    },
+    "horizontalOffset": "היסט אופקי",
+    "position": "מיקום",
+    "positionLocked": "לא ניתן להזיז ציור זה.",
+    "positionUnavailable": "מיקום זמין רק עבור תמונות צפות.",
+    "relativeToHorizontal": "ביחס ל (אופקי)",
+    "relativeToVertical": "ביחס ל (אנכי)",
+    "verticalOffset": "היסט אנכי"
   }
 }
