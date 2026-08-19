@@ -111,7 +111,7 @@
     "husky": "^9.1.7",
     "jszip": "^3.10.1",
     "lint-staged": "^17.0.4",
-    "postcss": "^8.4.33",
+    "postcss": "^8.5.18",
     "prettier": "^3.8.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -119,7 +119,7 @@
     "tailwindcss-animate": "^1.0.7",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
-    "vite": "^8.0.10",
+    "vite": "^8.1.5",
     "vue": "^3.5.29",
     "vue-eslint-parser": "^10.4.0"
   },
@@ -146,13 +146,27 @@
     "prosemirror-view": "1.41.8",
     "prosemirror-state": "1.4.4",
     "prosemirror-model": "1.25.4",
-    "prosemirror-transform": "1.12.0"
+    "prosemirror-transform": "1.12.0",
+    "fast-uri": "^3.1.5",
+    "nanoid": "^3.3.18",
+    "postcss": "^8.5.18",
+    "vite": "^8.1.5",
+    "ws": "^8.21.0",
+    "js-yaml": "^4.3.1",
+    "brace-expansion": "^5.0.9"
   },
   "resolutions": {
     "prosemirror-view": "1.41.8",
     "prosemirror-state": "1.4.4",
     "prosemirror-model": "1.25.4",
-    "prosemirror-transform": "1.12.0"
+    "prosemirror-transform": "1.12.0",
+    "fast-uri": "^3.1.5",
+    "nanoid": "^3.3.18",
+    "postcss": "^8.5.18",
+    "vite": "^8.1.5",
+    "ws": "^8.21.0",
+    "js-yaml": "^4.3.1",
+    "brace-expansion": "^5.0.9"
   },
   "dependencies": {
     "prosemirror-commands": "^1.7.1",

@@ -1,3 +1,47 @@
+<!-- ============================================================== -->
+<!-- FluentaOne fork notice — keep this block on top when syncing   -->
+<!-- from upstream; everything below it is upstream's README.       -->
+<!-- ============================================================== -->
+
+> [!IMPORTANT]
+> **This is `flnteu/docx-editor` — FluentaOne's vendor fork of
+> [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor). It is not
+> a development fork: no product code is written here.**
+>
+> FluentaOne's web app embeds the upstream `@docx-editor.dev/core` /
+> `@docx-editor.dev/react` npm packages as the document editor behind the
+> docedit feature (document templates, document-editor task views). Upstream
+> renamed these at 2.x — they were `@eigenpal/docx-editor-core` /
+> `-react` before. This fork exists for two reasons, per SPIKE-DOCEDIT-001 in
+> `flnt-docs-central`
+> (`architecture/spikes/SPIKE-DOCEDIT-001-eigenpal-evaluation.md`):
+>
+> 1. **Source escrow** — a copy of the source we depend on, under our own
+>    org, in case upstream disappears, goes private, or changes license. It
+>    lets us build a patched version ourselves if we ever have to.
+> 2. **Supply-chain gate** — `.github/workflows/flnteu-supply-chain.yml`
+>    independently verifies what we ship: `bun audit` scoped to the
+>    published-package dependency closure (`.github/flnteu/audit-scope.mjs`),
+>    a license allowlist, and a reproducible build + typecheck of
+>    `packages/*`. This gate must be green before a synced upstream version
+>    becomes the FluentaOne private-registry source (prd promotion gate).
+>
+> **Day to day:** dev/stg consume the packages from the public npm registry;
+> the fork is synced and tagged (`v<upstream-version>-flnteu`) when we adopt a
+> new upstream version. **`gh repo sync` does not work on this fork** and
+> never will: upstream re-initialized its git history on 2026-07-20, so the
+> two repositories share no commit at all (`git merge-base origin/main
+upstream/main` exits 1). The working sync procedure — and the recipe for
+> consuming a tag from npm — is in
+> [FLNTEU-README.md](FLNTEU-README.md); follow it instead.
+>
+> Fork-local files are confined to `README.md` (this notice),
+> `FLNTEU-README.md`, `.github/workflows/flnteu-*.yml`, `.github/flnteu/`,
+> `.claude/CLAUDE.md` + `.claude/settings.json`, and the CLA workflow's fork
+> guard — everything else tracks upstream to keep syncs conflict-free. Do not
+> open feature PRs here; upstream contributions go to
+> `eigenpal/docx-editor` (and require their CLA).
+
 <p align="center">
   <a href="https://www.docx-editor.dev/">
     <img src="./.github/assets/header.png" alt="DOCX Editor — .docx in, .docx out. Open source, agent ready, client-side." width="500" />

@@ -41,6 +41,14 @@ concurrency:
 
 jobs:
   check-drift:
+    # Fork guard (DEV-2291): upstream maintainer tooling, skipped on the
+    # flnteu fork — same reasoning as the CLA job. It mints the
+    # eigenpal-release-pal App token (secrets.RELEASE_PAL_APP_ID /
+    # RELEASE_PAL_PRIVATE_KEY), which does not and must not exist here, and
+    # it opens PRs against upstream's own tracking issues. Left unguarded it
+    # would fail on this fork every Monday 09:00 UTC forever. It also
+    # targets upstream's Blacksmith runner, which flnteu does not have.
+    if: github.repository_owner == 'eigenpal'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     timeout-minutes: 20
     # No pull-requests: write — every `gh pr` call and the push below use the

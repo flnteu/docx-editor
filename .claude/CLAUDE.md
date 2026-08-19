@@ -380,3 +380,21 @@ dev` → `http://localhost:5173/`. Live demo `http://docx-editor.dev/editor`.
   reaching them moves the caret.
 - **Icons** — inline SVG (Material Symbol paths), not a font. A missing name
   renders raw text.
+
+## Claude Code scaffolding (DEV-1256)
+
+Workflow guidance comes from the **fluenta plugin marketplace**
+(`github.com/flnteu/flnt-claude-plugins`), not from this repo.
+`.claude/settings.json` declares the marketplace and enables `clickup-tasks`, `security-audit`, `code-quality`, `git-workflow`, `docs-maintenance`, `architecture` —
+Claude Code prompts you to install them on first open. Skills are all
+`flnt-` prefixed (type `/flnt` to list them). Do not recreate
+`.claude/skills/`, `.claude/agents/`, `.claude/commands/`,
+`.claude/knowledge/`, `.claude/rules/`, or `.mcp.json` here (DEV-1218).
+
+Deliberately kept from upstream: `.claude/skills/openspec-*` and
+`.claude/commands/opsx` drive this repo's own OpenSpec workflow and have no
+marketplace equivalent.
+
+(The former generator repo `flnt-ai-config`, whose `repo-map.yaml` skip list
+this note used to cite, was archived on 2026-08-11; every repo now
+self-manages its `.claude/`, so there is nothing left to opt out of.)

@@ -104,3 +104,4 @@ e2e/fixtures/synthetic-huge-tracked.docx
 
 # SARIF from `bun run check:shipped-advisories --sarif=...`
 *.sarif
+.claude/scheduled_tasks.lock

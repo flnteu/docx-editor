@@ -21,7 +21,7 @@ permissions:
 jobs:
   lint:
     if: github.actor != 'dependabot[bot]'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest # flnteu fork: upstream's Blacksmith runners do not exist here (DEV-2291)
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -42,7 +42,7 @@ jobs:
 
   test:
     if: github.actor != 'dependabot[bot]'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest # flnteu fork: upstream's Blacksmith runners do not exist here (DEV-2291)
     steps:
       - name: Checkout
         uses: actions/checkout@v7.0.1
@@ -89,7 +89,7 @@ jobs:
   # It is independent of lint/test, so `build` does not wait on it.
   shipped-advisories:
     if: github.actor != 'dependabot[bot]'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest # flnteu fork: upstream's Blacksmith runners do not exist here (DEV-2291)
     permissions:
       contents: read
       security-events: write
@@ -120,7 +120,7 @@ jobs:
 
   build:
     if: github.actor != 'dependabot[bot]'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest # flnteu fork: upstream's Blacksmith runners do not exist here (DEV-2291)
     needs: [lint, test]
     steps:
       - name: Checkout

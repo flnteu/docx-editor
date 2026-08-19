@@ -31,13 +31,33 @@ jobs:
     # this if: when renaming the App would let the bot self-sign again.
     # GitHub Actions does not allow the env context in job-level if:, so
     # this can't be DRYed via a workflow-level variable.
+    #
+    # Fork guard (DEV-1218, re-applied on upstream 2.5.0 by DEV-2291): the
+    # whole job only makes sense on the upstream eigenpal repo. The "Mint
+    # App installation token" step needs the eigenpal-release-pal App's
+    # credentials (secrets.RELEASE_PAL_APP_ID / RELEASE_PAL_PRIVATE_KEY),
+    # which do not and must not exist on the flnteu fork — so on the fork
+    # the job died at that step on every PR, leaving a phantom red "cla"
+    # check that no allowlist/CLA_ORG tweak can fix (the ALLOWLIST logic
+    # runs only after a token is minted). Fork-internal PRs are not
+    # contributions to Eigenpal (see the ALLOWLIST note below), so the
+    # honest behavior on the fork is to skip. `secrets` is not available in
+    # job-level if:, hence the repo-owner check. If the fork ever wants its
+    # own CLA gate for external contributors, it needs its own GitHub App +
+    # secrets and this condition adjusted.
+    #
+    # `runs-on` above stays on upstream's Blacksmith runner, which the fork
+    # has no access to. That is deliberate and harmless: this guard means
+    # the job never schedules on the fork at all, and keeping the upstream
+    # value byte-for-byte is what keeps the next sync conflict-free.
     if: |
-      github.event_name == 'pull_request_target' ||
-      (github.event_name == 'issue_comment' &&
-       github.event.issue.pull_request != null &&
-       github.event.comment.user.login != 'eigenpal-release-pal[bot]' &&
-       (contains(github.event.comment.body, 'I have read the CLA Document and I hereby sign the CLA') ||
-        contains(github.event.comment.body, '!cla-check')))
+      github.repository_owner == 'eigenpal' &&
+      (github.event_name == 'pull_request_target' ||
+       (github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request != null &&
+        github.event.comment.user.login != 'eigenpal-release-pal[bot]' &&
+        (contains(github.event.comment.body, 'I have read the CLA Document and I hereby sign the CLA') ||
+         contains(github.event.comment.body, '!cla-check'))))
     steps:
       # Mints an installation token for the eigenpal-release-pal App. That App
       # has contents:write + pull-requests:write + statuses:write on this repo
@@ -71,12 +91,35 @@ jobs:
           # reason — private membership, transient API error, etc.).
           # eigenpal-release-pal[bot] is this workflow's own App: it authors the
           # PRs office-compat-drift.yml opens, and a bot cannot sign a CLA.
-          ALLOWLIST: 'dependabot[bot] github-actions[bot] renovate[bot] eigenpal-release-pal[bot] jedrazb'
+          #
+          # FluentaOne fork (DEV-1218): FluentaOne staff are added here
+          # because this fork's internal PRs are not contributions to
+          # Eigenpal. They change fork-local configuration only
+          # (`.claude/**`, `.github/workflows/flnteu-*.yml`, this repo's
+          # vendor gate) and are never submitted upstream, so Eigenpal's
+          # ICLA — which grants Eigenpal a perpetual licence over
+          # "present and future Contributions" — is the wrong instrument
+          # for them. The allowlist (not CLA_ORG) is what actually takes
+          # effect: `cla_org_member` calls `gh api orgs/<org>/members/...`
+          # with an Eigenpal GitHub App token, which has no read access to
+          # the flnteu org, so the lookup fails closed regardless of what
+          # CLA_ORG says. Add a handle here as each FluentaOne contributor
+          # opens their first PR against the fork.
+          #
+          # Anyone intending to send work UPSTREAM to Eigenpal must still
+          # sign — and if the IP belongs to their employer, §4 of CLA.md
+          # requires employer permission or a Corporate CLA, not this one.
+          ALLOWLIST: 'dependabot[bot] github-actions[bot] renovate[bot] eigenpal-release-pal[bot] jedrazb kornel-schrenk'
           # Auto-allowlist members of this org. Public members are recognized
           # via the workflow's GITHUB_TOKEN; private members will be prompted
           # to sign once (then they're recorded like anyone else). To turn the
           # org check off entirely, leave CLA_ORG empty.
-          CLA_ORG: 'eigenpal'
+          #
+          # Repointed eigenpal -> flnteu for the fork (DEV-1218): the org
+          # whose members legitimately bypass Eigenpal's CLA here is the one
+          # that owns this fork. See the ALLOWLIST note above for why this
+          # line is documentation of intent rather than the effective gate.
+          CLA_ORG: 'flnteu'
           CLA_URL: ${{ github.server_url }}/${{ github.repository }}/blob/main/CLA.md
           SIGN_PHRASE: 'I have read the CLA Document and I hereby sign the CLA'
         run: bash .github/cla/cla.sh

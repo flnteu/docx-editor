@@ -74,7 +74,7 @@ The editor has two rendering systems:
 - **Hidden ProseMirror** — the real editing state (selection, undo/redo, keyboard input)
 - **Visible Pages** (painter-model) — what the user sees, rebuilt from PM state on every change
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture and [CLAUDE.md](CLAUDE.md) for the agent-facing quick reference (also useful for humans).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture and [CLAUDE.md](.claude/CLAUDE.md) for the agent-facing quick reference (also useful for humans).
 
 ## Public API Surface
 
@@ -88,7 +88,7 @@ bun run api:extract
 git add docs/api/<pkg-slug>/
 ```
 
-The CI error message points at the source file for each drifted entry, so the fix is mechanical. Full details live in [CLAUDE.md](CLAUDE.md) under "Public API surface".
+The CI error message points at the source file for each drifted entry, so the fix is mechanical. Full details live in [CLAUDE.md](.claude/CLAUDE.md) under "Public API surface".
 
 **Adding a `DocxEditorProps` field or `DocxEditorRef` method to either adapter** also requires updating `scripts/parity/parity.contract.json` — the cross-adapter parity contract that tracks which fields are shared, deliberately Vue-deferred, or Vue-exclusive. `bun run check:parity-contract` (also run in CI) fails until the contract acknowledges the new symbol. The error message names the symbol and tells you which bucket to add it to.
 

@@ -37,7 +37,23 @@ concurrency:
 
 jobs:
   bench:
-    if: github.actor != 'dependabot[bot]'
+    # Fork guard (DEV-2291): upstream maintainer tooling, skipped on the
+    # flnteu fork. Two independent reasons, either one sufficient:
+    #   - `runs-on` below is upstream's Blacksmith runner. flnteu has no
+    #     self-hosted or Blacksmith runners (measured: repo and org
+    #     `actions/runners` both return total_count 0), so on the fork this
+    #     job would sit queued forever rather than fail — an eternally
+    #     pending PR check.
+    #   - the job benchmarks the PR head against its merge base. The fork's
+    #     main is a different upstream lineage entirely (upstream
+    #     re-initialized its history; the two share no commit), so a
+    #     head-vs-base timing comparison across a whole-tree replacement
+    #     measures nothing.
+    # The job is informational by design — it never fails on a timing delta
+    # — so skipping it costs the fork no gate. The deterministic
+    # work-counter gates it mentions run inside `bun run test` in ci.yml,
+    # which the fork does run.
+    if: github.repository_owner == 'eigenpal' && github.actor != 'dependabot[bot]'
     runs-on: blacksmith-4vcpu-ubuntu-2404
     # Sized for the three-fixture browser pass (plain + tracked + the generated
     # ~1,000-page stress document) on both sides.
