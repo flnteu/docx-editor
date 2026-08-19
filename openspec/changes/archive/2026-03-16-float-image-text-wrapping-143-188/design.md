@@ -1,10 +1,10 @@
 ## Context
 
-The editor uses a two-phase rendering pipeline: (1) **measurement** — paragraph text is broken into lines based on available width, (2) **rendering** — lines are painted into the visible DOM. Floating images are extracted from paragraphs in `renderPage.ts`, positioned absolutely in a floating layer, and exclusion zones are computed — but this information never reaches the measurement phase. The `FloatingObjectManager` class in `floatingObjects.ts` already implements `computeAvailableWidth(lineY, lineHeight, pageNumber)` which returns `{ width, offsetX }` per line, but it is never called.
+The editor uses a two-phase rendering pipeline: (1) **measurement** — paragraph text is broken into lines based on available width, (2) **rendering** — lines are painted into the visible DOM. Floating images are extracted from paragraphs in `paintPage.ts`, positioned absolutely in a floating layer, and exclusion zones are computed — but this information never reaches the measurement phase. The `FloatingObjectManager` class in `wrapZones.ts` already implements `computeAvailableWidth(lineY, lineHeight, pageNumber)` which returns `{ width, offsetX }` per line, but it is never called.
 
 The page rendering flow is:
 
-1. `renderPage.ts` iterates paragraph fragments
+1. `paintPage.ts` iterates paragraph fragments
 2. For each, it calls `extractFloatingImagesFromParagraph()` to find floating images
 3. It positions them and computes exclusion zones (`FloatingImageInfo`)
 4. It renders paragraphs via `renderParagraph()` — but doesn't pass exclusion zones to measurement

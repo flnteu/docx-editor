@@ -14,13 +14,17 @@ on:
   pull_request:
     branches: [main]
 
+# Least-privilege default GITHUB_TOKEN: lint/test/build only read the repo.
+permissions:
+  contents: read
+
 jobs:
   lint:
     if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -38,10 +42,10 @@ jobs:
 
   test:
     if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -58,18 +62,69 @@ jobs:
         run: bun run i18n:validate
 
       - name: Run tests
-        run: bun test
+        run: bun run test
 
+      # The React demo builds from LOCAL source, so this is the gate that a change to the
+      # engine or the shipped stylesheet still produces a working app. `build:packages`
+      # below does not catch it: a stylesheet that no CSS parser accepts passes typecheck,
+      # the whole suite and the adapter-CSS check, and only fails when an app bundles it.
+      - name: React demo app builds
+        run: bun run check:app-build
+
+      # The three Chromium gates that used to run here (`verify:a11y-tree`,
+      # `verify:real-adapter-smoke`, `verify:real-adapter-gate`) drove the legacy editor
+      # lane and went away with it — the scripts no longer exist, so the steps could only
+      # fail. The browser specs that replaced them (`bun run test:e2e:editor`) still need a
+      # Vue dev server this branch does not ship, so they are not wired in here yet.
       - name: CLA logic tests
         run: bash .github/cla/cla.test.sh
 
+  # Advisories in the dependency closure we publish. Deliberately NOT `bun audit`:
+  # that reads the whole workspace lock, so devDependencies and the demo apps in
+  # examples/ would fail the build for CVEs no consumer can reach. See the header
+  # of scripts/check-shipped-advisories.mjs.
+  #
+  # No `bun install` step on purpose. The script reads bun.lock and the package
+  # manifests, so a checkout is the whole setup and the job finishes in seconds.
+  # It is independent of lint/test, so `build` does not wait on it.
+  shipped-advisories:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Shipped dependency advisories
+        run: bun run check:shipped-advisories --sarif=shipped-advisories.sarif
+
+      # `always()` so a failing gate still publishes what it found: the run log
+      # is where a finding goes to be forgotten. `continue-on-error` because a
+      # fork PR gets a read-only token and cannot upload — the gate above has
+      # already passed or failed on its own, so a refused upload must not
+      # change the job result.
+      - name: Upload SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: shipped-advisories.sarif
+          category: shipped-advisories
+
   build:
     if: github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [lint, test]
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -87,14 +142,42 @@ jobs:
       - name: API report check
         run: bun run api:check
 
-      - name: Parity contract check
-        run: bun run check:parity-contract
+      # Same generator the release runs, here as a gate rather than for its
+      # output: it fails when a newly bundled dependency ships no license text,
+      # or when a tsup config stops emitting the metafile it reads. Catching
+      # that on the PR beats discovering it mid-publish.
+      - name: Third-party notices generate (gate)
+        run: bun run notices:generate
+
+      - name: Published-package artifact check
+        run: bun run check:package-artifacts
+
+      - name: Published-package consumer check
+        run: SKIP_CONSUMER_INSTALL_BUILD=1 bun run check:consumer-install
+
+      # Parity contract check is disabled while @docx-editor.dev/vue is WIP and
+      # unpublished — it reads the Vue adapter's API Extractor snapshot, which is no
+      # longer regenerated now that the package is off `build:packages`, so it can only
+      # gate CI on an adapter that doesn't ship. Restore
+      # `- name: Parity contract check / run: bun run check:parity-contract` when the
+      # Vue package drops `private: true`.
 
       - name: i18n per-locale bundle size check
         run: bun run check:i18n-bundle-size
+
+      - name: Fonts package manifest check
+        # Baked sha256 hashes in @docx-editor.dev/fonts must match the shipped TTFs.
+        run: bun run check:fonts-manifest
 
       - name: Docs JSON generation (smoke test)
         # Not committed — `docs/json/` is gitignored. Run as a smoke test
         # so any breakage in the generator surfaces here instead of when
         # the docs site (`docx-editor-page`) tries to consume it.
         run: bun run docs:json
+
+      - name: Docs MDX check
+        # `docs/site/content/` is prose with no app in this repo to render it,
+        # so a bare `{identifier}` compiles fine here and only explodes when
+        # the docs site prerenders it. Same reasoning as the step above: catch
+        # it on the PR, not in `docx-editor-page`'s build.
+        run: bun run check:docs-mdx

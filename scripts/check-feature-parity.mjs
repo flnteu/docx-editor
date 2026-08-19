@@ -10,7 +10,7 @@
 //
 // Run: node scripts/check-feature-parity.mjs
 // Output: structured Markdown report on stdout, JSON to
-//   openspec/changes/vue-editor-robust-implementation/notes/feature-parity-report.json
+//   openspec/changes/typed-ooxml-paragraph-editor/notes/feature-parity-report.json
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,17 +21,17 @@ const REACT_ROOT = path.join(ROOT, 'packages/react/src');
 const VUE_ROOT = path.join(ROOT, 'packages/vue/src');
 const REPORT_PATH = path.join(
   ROOT,
-  'openspec/changes/vue-editor-robust-implementation/notes/feature-parity-report.json'
+  'openspec/changes/typed-ooxml-paragraph-editor/notes/feature-parity-report.json'
 );
 const RENDER_PATH_DIVERGENCE = path.join(
   ROOT,
-  'openspec/changes/vue-editor-robust-implementation/notes/intentional-render-path-divergence.md'
+  'openspec/changes/typed-ooxml-paragraph-editor/notes/intentional-render-path-divergence.md'
 );
 
 // Files whose React-only-ness is documented as intentional in the
 // render-path divergence note. They share their behaviour with Vue
-// via packages/core/src/layout-painter/, so the parity counter
-// shouldn't penalise them.
+// via the core package surface, so the parity counter should not
+// penalize them.
 function loadIntentionalRenderPathSet() {
   if (!fs.existsSync(RENDER_PATH_DIVERGENCE)) return new Set();
   const md = fs.readFileSync(RENDER_PATH_DIVERGENCE, 'utf8');
@@ -75,12 +75,18 @@ function walkFiles(rootDir, accept) {
 }
 
 function readSfcScript(src) {
-  // Pull the `<script setup ...>` block out of a .vue SFC. Returns
-  // both the inner contents (for body extraction) and a mock
-  // "TS-like" surface so the regexes below find the same patterns
-  // in Vue files as in React .tsx files.
-  const m = src.match(/<script[^>]*>([\s\S]*?)<\/script>/);
-  return m ? m[1] : '';
+  // Pull the `<script setup ...>` block out of a .vue SFC. Index-based scan
+  // rather than a tag-matching regex: a regex over `<script…>…</script>` is
+  // fragile to handle for every casing/whitespace variant, so we just locate
+  // the opening tag, its end, and the closing tag by string search.
+  const lower = src.toLowerCase();
+  const open = lower.indexOf('<script');
+  if (open === -1) return '';
+  const openEnd = src.indexOf('>', open);
+  if (openEnd === -1) return '';
+  const close = lower.indexOf('</script', openEnd);
+  if (close === -1) return '';
+  return src.slice(openEnd + 1, close);
 }
 
 function extractFromFile(absPath) {
@@ -91,14 +97,14 @@ function extractFromFile(absPath) {
     .replace(/\.(tsx?|vue|jsx?)$/, '');
 
   // Tag files that are pure core re-exports — they don't add surface
-  // (the canonical implementation lives in @eigenpal/docx-editor-core)
+  // (the canonical implementation lives in @docx-editor.dev/core)
   // so the parity counter shouldn't penalise them as react-only.
   // Only consider .ts/.tsx; Vue SFCs always have a <template>, so
   // they're never pure shims.
   const isVue = absPath.endsWith('.vue');
   const isCoreReexport =
     !isVue &&
-    /\bfrom\s+['"]@eigenpal\/docx-editor-core/.test(body) &&
+    /\bfrom\s+['"]@docx-editor\.dev\/core/.test(body) &&
     !/\b(function|class|const\s+\w+\s*=\s*[^/])\b/.test(
       body.replace(/from\s+['"][^'"]+['"]/g, '')
     );
@@ -174,10 +180,10 @@ function diffSets(reactSet, vueSet) {
 function buildReport() {
   const reactFiles = walkFiles(REACT_ROOT, (n) => n.endsWith('.tsx') || n.endsWith('.ts'));
   const vueFiles = walkFiles(VUE_ROOT, (n) => n.endsWith('.vue') || n.endsWith('.ts'));
-  // Drop pure core re-exports — the surface lives in core, not in
-  // the adapter, so they shouldn't count as adapter-specific drift.
+  // Drop pure core re-exports, the surface lives in core, not in
+  // the adapter, so they should not count as adapter-specific drift.
   // Also drop files documented as intentional render-path divergence
-  // (Vue ships the same behaviour via core's layout-painter).
+  // where Vue ships the same behaviour through the core package.
   const reactComponents = reactFiles
     .map(extractFromFile)
     .filter((f) => !f.isCoreReexport && !INTENTIONAL_RENDER_PATH.has(f.componentName));

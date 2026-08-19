@@ -1,6 +1,6 @@
 /**
- * Shared locale data, types, and runtime helpers for the @eigenpal
- * docx-editor adapters.
+ * Shared locale data, types, and runtime helpers for the @docx-editor.dev
+ * editor adapters.
  *
  * Import everything from the package root. `sideEffects: false` lets
  * consumer bundlers tree-shake unused locales.
@@ -14,7 +14,7 @@
  *   type Translations,                  // shape of a community partial
  *   type TranslationKey,                // every valid `t()` key
  *   type LocaleCode,                    // 'en' | 'de' | 'pt-BR' | ...
- * } from '@eigenpal/docx-editor-i18n';
+ * } from '@docx-editor.dev/i18n';
  * ```
  *
  * The React and Vue adapters wrap `createT` in framework-native bindings
@@ -37,6 +37,7 @@ import deJson from '../de.json';
 import frJson from '../fr.json';
 import heJson from '../he.json';
 import hiJson from '../hi.json';
+import idJson from '../id.json';
 import plJson from '../pl.json';
 import ptBRJson from '../pt-BR.json';
 import trJson from '../tr.json';
@@ -59,7 +60,7 @@ export type LocaleStrings = typeof enJson;
  *
  * @public
  */
-export type LocaleCode = 'en' | 'de' | 'fr' | 'he' | 'hi' | 'pl' | 'pt-BR' | 'tr' | 'zh-CN';
+export type LocaleCode = 'en' | 'de' | 'fr' | 'he' | 'hi' | 'id' | 'pl' | 'pt-BR' | 'tr' | 'zh-CN';
 
 /** English (`en`) — the source of truth, 100% covered. @public */
 export const en: LocaleStrings = enJson;
@@ -75,6 +76,9 @@ export const he: PartialLocaleStrings = heJson;
 
 /** Hindi (`hi`). Community-maintained; null leaves fall back to English. @public */
 export const hi: PartialLocaleStrings = hiJson;
+
+/** Indonesian (`id`). Community-maintained; null leaves fall back to English. @public */
+export const id: PartialLocaleStrings = idJson;
 
 /** Polish (`pl`). Community-maintained; null leaves fall back to English. @public */
 export const pl: PartialLocaleStrings = plJson;
@@ -108,6 +112,7 @@ export const locales: Record<LocaleCode, PartialLocaleStrings> = {
   fr,
   he,
   hi,
+  id,
   pl,
   'pt-BR': ptBR,
   tr,
@@ -156,8 +161,8 @@ type DotPath<T, Prefix extends string = ''> = {
 }[keyof T & string];
 
 /**
- * Every valid dot-notation key into `LocaleStrings`, e.g. `'toolbar.bold'`
- * or `'dialogs.findReplace.matchCount'`. Pass to `t(key, vars?)` for
+ * Every valid dot-notation key into `LocaleStrings`, e.g. `'formattingBar.bold'`
+ * or `'navigation.find.counter'`. Pass to `t(key, vars?)` for
  * compile-time-checked translation lookup.
  *
  * @public
@@ -226,7 +231,13 @@ function formatMessage(
   if (!vars) return template;
 
   const result = template.replace(
-    /\{(\w+),\s*plural,\s*((?:[^{}]|\{[^{}]*\})*)\}/g,
+    // Linear on hostile templates: the branch group keeps the single-char
+    // `[^{}]` alternative (using `[^{}]+` would form `(X+)*`, an exponential
+    // pattern), and there is no `\s*` before the group — that `\s*` overlapped
+    // with the group's leading whitespace and let a run of spaces be
+    // partitioned many ways (the polynomial-ReDoS source). parseBranches
+    // already tolerates the leading whitespace now folded into the capture.
+    /\{(\w+),\s*plural,((?:[^{}]|\{[^{}]*\})*)\}/g,
     (full, varName, branchStr) => {
       const count = Number(vars[varName]);
       if (isNaN(count)) return full;
@@ -262,7 +273,7 @@ export type TFunction = (key: TranslationKey, vars?: Record<string, string | num
  * Build a typed `t(key, vars?)` function from a merged locale.
  *
  * - **Lookup**: dot-notation paths against the locale tree
- *   (`'toolbar.bold'`, `'dialogs.findReplace.matchCount'`).
+ *   (`'formattingBar.bold'`, `'navigation.find.counter'`).
  * - **Interpolation**: `{name}` placeholders read from `vars`.
  * - **Plurals**: ICU `{count, plural, =0 {none} one {# item} other {# items}}`
  *   with `Intl.PluralRules` for CLDR categories and `=N` for exact matches.
@@ -274,11 +285,11 @@ export type TFunction = (key: TranslationKey, vars?: Record<string, string | num
  *
  * @example
  * ```ts
- * import { deepMerge, createT, en, de } from '@eigenpal/docx-editor-i18n';
+ * import { deepMerge, createT, en, de } from '@docx-editor.dev/i18n';
  * const merged = deepMerge(en, de) as LocaleStrings;
  * const t = createT(merged, 'de');
- * t('toolbar.bold');                          // → 'Fett'
- * t('dialogs.findReplace.matchCount', { current: 3, total: 15 });
+ * t('formattingBar.bold');                    // → 'Fett'
+ * t('navigation.find.counter', { current: 3, total: 15 });
  * ```
  *
  * @public

@@ -1,77 +1,94 @@
-# @eigenpal/docx-editor-i18n
+# @docx-editor.dev/i18n
+
+## 2.5.0
+
+## 2.4.1
+
+## 2.4.0
+
+## 2.3.1
+
+## 2.3.0
+
+## 2.2.1
+
+## 2.2.0
+
+### Minor Changes
+
+- 568ccf7: The catalogue drops 456 keys nothing renders, mostly strings for dialogs that no longer ship, and every community locale is pruned to match. `TranslationKey` and `LocaleStrings` narrow accordingly, so naming a removed key is now a type error rather than a lookup that returned nothing visible.
+
+## 2.1.3
+
+## 2.1.2
+
+## 2.1.1
+
+## 2.1.0
+
+### Patch Changes
+
+- 232728c: Complete the German, French, Hebrew, Hindi, Indonesian, Polish, Brazilian Portuguese, Turkish, and Simplified Chinese translations; previously missing strings fell back to English.
+
+## 2.0.1
+
+## 2.0.0
+
+### Patch Changes
+
+- 26095c6: Published packages now ship a `THIRD_PARTY_NOTICES.md` reproducing the license of every third-party package bundled into their release artifacts.
+
+## 1.10.0
+
+## 1.9.0
+
+### Patch Changes
+
+- 28876a2: Make regular expressions over file- and library-supplied strings run in linear time and escape quoted font names completely. The variable-detection, plural-message, and core-properties date regexes no longer backtrack polynomially on hostile input, and font family names are now backslash-escaped before being wrapped in a quoted CSS string so a crafted DOCX font name cannot break out of it.
+
+## 1.8.3
+
+## 1.8.2
+
+## 1.8.1
+
+## 1.8.0
+
+## 1.7.0
+
+## 1.6.2
+
+## 1.6.1
+
+### Patch Changes
+
+- c25ba18: Fix Indonesian (id) locale interpolation: restore the `{total}`, `{minRows}/{maxRows}/{minCols}/{maxCols}`, and `{label}` placeholders that were renamed or dropped, so the find/replace match count, insert-table validation hint, and line-spacing tooltip render their values instead of literal braces.
+- 4a75c5e: Add Indonesian (id) community-maintained locale - 97% Coverage
+
+## 1.6.0
+
+## 1.5.0
+
+## 1.4.0
+
+## 1.3.3
+
+## 1.3.2
+
+## 1.3.1
+
+## 1.3.0
+
+## 1.2.1
+
+## 1.2.0
 
 ## 1.1.0
 
 ### Minor Changes
 
 - a7f9ac5: Add French locale
-- 42ea72d: Track structural edits as OOXML revisions in suggesting mode (fixes #614).
-
-  Authoring:
-  - Pressing Enter in suggesting mode marks the new paragraph break as
-    tracked (`<w:pPr><w:rPr><w:ins/>`); Backspace at paragraph start marks
-    the prior break as deleted (`<w:del/>`) without actually joining until
-    accepted.
-  - `addRowBelow` / `addRowAbove` / `deleteRow` in suggesting mode set
-    `trIns` / `trDel` plus mirroring `cellMarker` on each cell instead of
-    mutating the table structure.
-  - Editing paragraph properties in suggesting mode records a `pPrChange`
-    entry with the prior `ParagraphFormatting` snapshot.
-
-  Round-trip preservation:
-  - Paragraph-mark insertion / deletion (`<w:pPr><w:rPr><w:ins/></w:del/>`),
-    paragraph property changes (`<w:pPrChange>`), table row insertion /
-    deletion (`<w:trPr><w:ins/></w:del/>`), row property changes
-    (`<w:trPrChange>`), cell insertion / deletion / merge
-    (`<w:cellIns>`, `<w:cellDel>`, `<w:cellMerge>` with `w:vMerge` value
-    preserved), cell property changes (`<w:tcPrChange>`), table property
-    changes (`<w:tblPrChange>`) — all parse, round-trip, and re-emit per
-    the ECMA-376 schema (CT_PPrBase containment for `*Change` previous
-    snapshots, schema-mandated ordering, single `*Change` per parent,
-    no `w:rsid` on `CT_TrackChange` extensions).
-
-  Accept / Reject:
-  - New commands `acceptChangeById(id)` / `rejectChangeById(id)` resolve
-    any revision in one PM transaction. Per Word semantics: accept
-    `pPrIns` clears the marker; reject joins-with-next (resulting
-    paragraph inherits the second paragraph's `pPr`). Reject `pPrChange`
-    restores the prior properties onto the paragraph.
-  - `acceptAllChanges` / `rejectAllChanges` now resolve every revision
-    type (inline marks, paragraph-mark, paragraph-property, row, cell,
-    table-property), not just inline.
-
-  Sidebar:
-  - Existing TrackedChange sidebar surfaces every new revision type:
-    paragraphMarkInsertion, paragraphMarkDeletion, paragraphPropertiesChanged,
-    rowInserted, rowDeleted, rowPropertiesChanged, cellInserted, cellDeleted,
-    cellMerged, cellPropertiesChanged, tablePropertiesChanged. Accept /
-    Reject buttons route via `acceptChangeById` / `rejectChangeById`. React
-    and Vue cards both i18n-localized (15 new `revisions.*` keys across
-    all 7 locales). Multi-site revisions (row + N cells under one
-    `(id, author, date)` triple) collapse to a single sidebar entry.
-
-  Painter:
-  - Pilcrow ¶ glyph at end of revised paragraphs (insertion green,
-    deletion red strikethrough); vertical margin change-bar; colored
-    row/cell borders for trIns/trDel/cellMarker; dashed boundary for
-    unaccepted vertical cellMerge. Painter styles live in
-    `@eigenpal/docx-editor-core/prosemirror/editor.css` and both adapters
-    inherit (React + Vue parity).
-
-  What's NOT yet covered (follow-up PRs):
-  - `<w:sectPrChange>` (section property revisions)
-  - `<w:rPr><w:rPrChange>` paragraph-mark formatting (CT_ParaRPrChange,
-    distinct from run rPrChange)
-  - `<w:moveFrom>` / `<w:moveTo>` round-trip
-  - `<w:numPr><w:ins/>` (numbered-list assignment tracking)
-  - Suggesting-aware `addColumnLeft` / `addColumnRight` / `deleteColumn`
-    (TODOs in source reference the spec)
-  - Agents-package surface for the new structural-revision fields
-  - Collaboration / multi-author conflict semantics (single-user only)
-
-  OOXML conformance audit, code review, and simplification pass have
-  been folded back into this branch; see PR #616 for the per-phase
-  review history.
+- 42ea72d: Track structural edits as OOXML revisions in suggesting mode. Paragraph-break insert/delete, paragraph-property changes, and table row/cell insert/delete/merge are now recorded, round-tripped through DOCX, and shown in the tracked-changes sidebar (React and Vue, localized). Adds `acceptChangeById(id)` / `rejectChangeById(id)`, and `acceptAllChanges` / `rejectAllChanges` now resolve every revision type rather than inline marks only. Fixes #614.
 
 ### Patch Changes
 
@@ -85,16 +102,16 @@
 
 ### Patch Changes
 
-- fe4cb94: Add per-locale subpath imports to `@eigenpal/docx-editor-i18n` so dynamic
+- fe4cb94: Add per-locale subpath imports to `@docx-editor.dev/i18n` so dynamic
   locale loading can code-split a single locale instead of bundling the whole
   set:
 
   ```ts
   // Static — bundler ships only this locale's strings
-  import pl from '@eigenpal/docx-editor-i18n/pl';
+  import pl from '@docx-editor.dev/i18n/pl';
 
   // Dynamic — splits into its own chunk, loaded on demand
-  const pl = (await import('@eigenpal/docx-editor-i18n/pl')).default;
+  const pl = (await import('@docx-editor.dev/i18n/pl')).default;
   ```
 
   Subpaths ship for every locale: `/en`, `/de`, `/he`, `/pl`, `/pt-BR`, `/tr`,
@@ -102,15 +119,15 @@
   ergonomic path for static lists, the subpath for runtime locale switching.
 
   Also re-export `createEmptyDocument`, `createDocumentWithText`, and
-  `CreateEmptyDocumentOptions` from `@eigenpal/docx-editor-react` and
-  `@eigenpal/docx-editor-vue` so the common "spawn a blank editor"
+  `CreateEmptyDocumentOptions` from `@docx-editor.dev/react` and
+  `@docx-editor.dev/vue` so the common "spawn a blank editor"
   affordance no longer requires installing `-core` alongside the adapter.
 
   Surface `Comment`, `CommentRangeStart`, `CommentRangeEnd`,
   `TrackedChangeInfo`, `TrackedRunChange`, `Insertion`, `Deletion`,
   `MoveFrom`, `MoveTo`, and `ParagraphContent` from the main
-  `@eigenpal/docx-editor-core` entry. They were already public via
-  `@eigenpal/docx-editor-core/headless`; the main entry just hadn't been
+  `@docx-editor.dev/core` entry. They were already public via
+  `@docx-editor.dev/core/headless`; the main entry just hadn't been
   re-exporting them.
 
 ## 1.0.0
@@ -123,25 +140,25 @@
 
   ## Package restructure (breaking)
 
-  | Old import                                 | New import                                |
-  | ------------------------------------------ | ----------------------------------------- |
-  | `@eigenpal/docx-js-editor`                 | `@eigenpal/docx-editor-react`             |
-  | `@eigenpal/docx-js-editor/react`           | `@eigenpal/docx-editor-react`             |
-  | `@eigenpal/docx-editor-react/core`         | `@eigenpal/docx-editor-core`              |
-  | `@eigenpal/docx-editor-react/headless`     | `@eigenpal/docx-editor-core/headless`     |
-  | `@eigenpal/docx-editor-react/core-plugins` | `@eigenpal/docx-editor-core/core-plugins` |
-  | `@eigenpal/docx-editor-react/mcp`          | `@eigenpal/docx-editor-agents/mcp`        |
-  | `@eigenpal/docx-editor-react/i18n/*.json`  | `@eigenpal/docx-editor-i18n/*.json`       |
+  | Old import                            | New import                           |
+  | ------------------------------------- | ------------------------------------ |
+  | `@eigenpal/docx-js-editor`            | `@docx-editor.dev/react`             |
+  | `@eigenpal/docx-js-editor/react`      | `@docx-editor.dev/react`             |
+  | `@docx-editor.dev/react/core`         | `@docx-editor.dev/core`              |
+  | `@docx-editor.dev/react/headless`     | `@docx-editor.dev/core/headless`     |
+  | `@docx-editor.dev/react/core-plugins` | `@docx-editor.dev/core/core-plugins` |
+  | `@docx-editor.dev/react/mcp`          | `@docx-editor.dev/agents/mcp`        |
+  | `@docx-editor.dev/react/i18n/*.json`  | `@docx-editor.dev/i18n/*.json`       |
 
   The old `@eigenpal/docx-js-editor` package stays on 0.x for legacy maintenance — no 1.x compatibility shim ships. Framework-agnostic utilities (e.g. `createEmptyDocument`) move to core:
 
   ```diff
   - import { DocxEditor, createEmptyDocument } from '@eigenpal/docx-js-editor';
-  + import { DocxEditor } from '@eigenpal/docx-editor-react';
-  + import { createEmptyDocument } from '@eigenpal/docx-editor-core';
+  + import { DocxEditor } from '@docx-editor.dev/react';
+  + import { createEmptyDocument } from '@docx-editor.dev/core';
   ```
 
-  ## Vue 3 adapter (`@eigenpal/docx-editor-vue`)
+  ## Vue 3 adapter (`@docx-editor.dev/vue`)
 
   The Vue package becomes a real adapter (previously a stub). Public API mirrors React:
   - `<DocxEditor>` with matching prop surface
@@ -150,28 +167,28 @@
 
   Parity gates cover insert-table, find/replace, page-setup, context menus, image overlay (resize/move/rotate/aspect-locked corners, dimension tooltip), advanced cell/row options (margins, height rule, text direction, no-wrap), menu-bar icons + shortcuts + carets, toolbar pickers, and the agent UI surface.
 
-  ## Shared i18n package (`@eigenpal/docx-editor-i18n`)
+  ## Shared i18n package (`@docx-editor.dev/i18n`)
 
-  Locale strings move out of `@eigenpal/docx-editor-react` into a dedicated package consumed by both adapters from a single source.
+  Locale strings move out of `@docx-editor.dev/react` into a dedicated package consumed by both adapters from a single source.
 
   ```diff
-  - import de from '@eigenpal/docx-editor-react/i18n/de.json';
-  + import de from '@eigenpal/docx-editor-i18n/de.json';
+  - import de from '@docx-editor.dev/react/i18n/de.json';
+  + import de from '@docx-editor.dev/i18n/de.json';
   ```
 
   The `defaultLocale` value (English) is still re-exported from the adapter packages, unchanged.
 
   ## Agent UI relocation (breaking)
 
-  `AgentPanel`, `AgentChatLog`, `AgentComposer`, `AgentSuggestionChip`, `AgentTimeline` no longer ship from `@eigenpal/docx-editor-react`. They live at:
-  - `@eigenpal/docx-editor-agents/react` — React components + `useAgentChat`
-  - `@eigenpal/docx-editor-agents/vue` — Vue 3 twins, plus `AIContextMenu` and `AIResponsePreview`
-  - `@eigenpal/docx-editor-agents/ai-sdk/react` / `/ai-sdk/vue` — `@ai-sdk/*` adapters
-  - `@eigenpal/docx-editor-agents/bridge` — React-free `createEditorBridge`, `agentTools`, `executeToolCall`, `getToolSchemas`, `createReviewerBridge`. Safe for headless / Vue / Node.
+  `AgentPanel`, `AgentChatLog`, `AgentComposer`, `AgentSuggestionChip`, `AgentTimeline` no longer ship from `@docx-editor.dev/react`. They live at:
+  - `@docx-editor.dev/agents/react` — React components + `useAgentChat`
+  - `@docx-editor.dev/agents/vue` — Vue 3 twins, plus `AIContextMenu` and `AIResponsePreview`
+  - `@docx-editor.dev/agents/ai-sdk/react` / `/ai-sdk/vue` — `@ai-sdk/*` adapters
+  - `@docx-editor.dev/agents/bridge` — React-free `createEditorBridge`, `agentTools`, `executeToolCall`, `getToolSchemas`, `createReviewerBridge`. Safe for headless / Vue / Node.
 
   ```diff
-  - import { AgentPanel, AgentChatLog } from '@eigenpal/docx-editor-react';
-  + import { AgentPanel, AgentChatLog } from '@eigenpal/docx-editor-agents/react';
+  - import { AgentPanel, AgentChatLog } from '@docx-editor.dev/react';
+  + import { AgentPanel, AgentChatLog } from '@docx-editor.dev/agents/react';
   ```
 
   The agent components no longer call `useTranslation` directly — pass localized `*Label` props instead. `<DocxEditor>`'s built-in agent panel slot still forwards localized strings automatically.
@@ -203,7 +220,7 @@
 
   ## License moves to Apache 2.0
 
-  All published packages relicense to Apache 2.0. Notably: `@eigenpal/docx-editor-agents` was AGPL-3.0-or-later — the relicense lifts copyleft obligations on agent embedders.
+  All published packages relicense to Apache 2.0. Notably: `@docx-editor.dev/agents` was AGPL-3.0-or-later — the relicense lifts copyleft obligations on agent embedders.
 
 ### Patch Changes
 

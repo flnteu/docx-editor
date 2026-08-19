@@ -12,8 +12,8 @@
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { CSSProperties } from 'react';
-import type { SectionProperties } from '@eigenpal/docx-editor-core/types/document';
-import { twipsToPixels, pixelsToTwips, formatPx } from '@eigenpal/docx-editor-core/utils';
+import type { RulerPageSetup } from './HorizontalRuler';
+import { twipsToPixels, pixelsToTwips, formatPx } from '../../lib/units';
 import { useTranslation } from '../../i18n';
 
 // ============================================================================
@@ -21,8 +21,8 @@ import { useTranslation } from '../../i18n';
 // ============================================================================
 
 export interface VerticalRulerProps {
-  /** Section properties for page layout */
-  sectionProps?: SectionProperties | null;
+  /** Section page setup (`Editor.getPageSetup()`), twips throughout */
+  pageSetup?: RulerPageSetup | null;
   /** Zoom level (1.0 = 100%) */
   zoom?: number;
   /** Whether margins can be dragged to adjust */
@@ -31,6 +31,8 @@ export interface VerticalRulerProps {
   onTopMarginChange?: (marginTwips: number) => void;
   /** Callback when bottom margin changes (in twips) */
   onBottomMarginChange?: (marginTwips: number) => void;
+  /** Fires when a margin drag is released — the moment to commit what the drag previewed. */
+  onMarginDragEnd?: () => void;
   /** Unit to display (inches or cm) */
   unit?: 'inch' | 'cm';
   /** Additional CSS class name */
@@ -51,7 +53,9 @@ const TWIPS_PER_INCH = 1440;
 const TWIPS_PER_CM = 567;
 
 // Ruler styling - Google Docs style
-const RULER_WIDTH = 20;
+// Exported so the outline toggle/panel can inset past the vertical ruler
+// (it overlays the editor's left edge) instead of rendering on top of it.
+export const RULER_WIDTH = 20;
 const RULER_TEXT_COLOR = 'var(--doc-text-muted)';
 const RULER_TICK_COLOR = 'var(--doc-text-subtle)';
 const MARKER_COLOR = 'var(--doc-primary)';
@@ -63,11 +67,12 @@ const MARKER_ACTIVE_COLOR = 'var(--doc-primary-hover)';
 // ============================================================================
 
 export function VerticalRuler({
-  sectionProps,
+  pageSetup,
   zoom = 1,
   editable = false,
   onTopMarginChange,
   onBottomMarginChange,
+  onMarginDragEnd,
   unit = 'inch',
   className = '',
   style,
@@ -78,9 +83,9 @@ export function VerticalRuler({
   const rulerRef = useRef<HTMLDivElement>(null);
 
   // Get page dimensions
-  const pageHeightTwips = sectionProps?.pageHeight ?? DEFAULT_PAGE_HEIGHT_TWIPS;
-  const topMarginTwips = sectionProps?.marginTop ?? DEFAULT_MARGIN_TWIPS;
-  const bottomMarginTwips = sectionProps?.marginBottom ?? DEFAULT_MARGIN_TWIPS;
+  const pageHeightTwips = pageSetup?.pageHeightTwips ?? DEFAULT_PAGE_HEIGHT_TWIPS;
+  const topMarginTwips = pageSetup?.marginsTwips.top ?? DEFAULT_MARGIN_TWIPS;
+  const bottomMarginTwips = pageSetup?.marginsTwips.bottom ?? DEFAULT_MARGIN_TWIPS;
 
   // Convert to pixels with zoom
   const pageHeightPx = twipsToPixels(pageHeightTwips) * zoom;
@@ -131,8 +136,9 @@ export function VerticalRuler({
 
   // Handle drag end
   const handleDragEnd = useCallback(() => {
+    if (dragging !== null) onMarginDragEnd?.();
     setDragging(null);
-  }, []);
+  }, [dragging, onMarginDragEnd]);
 
   // Add/remove document event listeners
   useEffect(() => {

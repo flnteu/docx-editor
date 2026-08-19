@@ -1,0 +1,325 @@
+---
+title: 'Custom nodes'
+description: 'Your own inline node types (citations, mentions, merge fields) as Word content controls.'
+category: 'Pro'
+order: 63
+---
+
+Use a custom node for an element DOCX has no type for: a citation, an @mention, a merge field, a
+signature placeholder. Each is stored as an inline Word content control (`w:sdt`), so Word renders
+its text and hands it back unchanged.
+
+Requires the custom-nodes module from [`@docx-editor.dev/pro`](/docs/2.x/pro).
+
+## A citation, end to end
+
+```tsx
+import { z } from 'zod';
+import { customNodesModule, defineCustomNode, insertCustomNode } from '@docx-editor.dev/pro';
+import { CustomNodeChrome } from '@docx-editor.dev/pro/react';
+import { DocxEditor, useDocxEditor } from '@docx-editor.dev/react';
+
+const Citation = defineCustomNode({
+  name: 'citation',
+  tagPrefix: 'acme',
+  schema: z.object({
+    sourceId: z.string().min(1),
+    author: z.string(),
+    year: z.number().int(),
+  }),
+  text: (data) => `(${data.author} ${String(data.year)})`,
+});
+
+// Built once, outside render: modules are read when the editor is constructed.
+const MODULES = [customNodesModule({ nodes: [Citation] })];
+
+function CiteButton() {
+  const editor = useDocxEditor(); // null until the content is mounted
+  return (
+    <button
+      disabled={!editor}
+      onClick={() => {
+        const result = insertCustomNode(editor!, Citation, {
+          data: { sourceId: 'smith-2024', author: 'Smith', year: 2024 },
+        });
+        if (!result.ok) console.warn(result.reason);
+      }}
+    >
+      Cite
+    </button>
+  );
+}
+
+export function Editor({ bytes }: { bytes: Uint8Array }) {
+  return (
+    <DocxEditor.Root document={bytes} modules={MODULES}>
+      <CiteButton />
+      <DocxEditor.Viewport>
+        <DocxEditor.Content />
+        <CustomNodeChrome onNodeClick={(node) => console.log(Citation.dataOf(node))} />
+      </DocxEditor.Viewport>
+    </DocxEditor.Root>
+  );
+}
+```
+
+Cite drops `(Smith 2024)` at the caret as a chip. Save, open in Word, bring it back: the chip is
+recognized again, payload included.
+
+## I want to
+
+<Cards>
+  <Card title="Store data on a node" href="#define-a-node">
+    A payload validated by your schema, up to 262,144 UTF-16 code units, kept in a customXml part.
+  </Card>
+  <Card title="Show a chip and react to clicks" href="#render-the-chips">
+    `CustomNodeChrome` paints recognized nodes and gives you the click, hover and rect.
+  </Card>
+  <Card title="Insert, edit or delete a node" href="#insert-update-remove">
+    Three functions, one transaction and one undo step each.
+  </Card>
+  <Card title="Find every node in the document" href="#read-the-nodes">
+    `customNodesOf(editor)` in body order, `dataOf` to get your type back.
+  </Card>
+  <Card title="Strip my markup before sending a file out" href="#save-vs-export">
+    `saveForExport` applies each definition's `preserveOnExport`.
+  </Card>
+  <Card title="Write nodes on a server" href="#common-configurations">
+    `customNodeXml` returns control XML plus the required package metadata.
+  </Card>
+  <Card title="Look up a parameter or an error code" href="/docs/2.x/pro/custom-nodes-reference">
+    Every option on `defineCustomNode`, every refusal code, the on-disk format.
+  </Card>
+</Cards>
+
+## Define a node
+
+```ts
+const Citation = defineCustomNode({
+  name: 'citation', // second segment of the tag
+  tagPrefix: 'acme', // this definition claims acme:*
+  schema: CitationData, // shape of the payload
+  text: (data) => `(${data.author} ${String(data.year)})`, // what the document shows
+});
+```
+
+`schema` is any [Standard Schema](https://standardschema.dev): zod, valibot, arktype. The pro
+package bundles none of them, so bring the one you already use.
+
+- Invalid data is rejected before anything is written to the document.
+- Data read back out is returned as your type instead of `unknown`.
+
+Payloads also arrive from `.docx` files someone else wrote, so the schema is what stands between
+that JSON and your code. Async validation is refused.
+
+`text` reads the schema's _output_, so a `.default()` or a `.transform()` has already run.
+
+A node can skip `schema` and keep everything in its tag, which Word caps at 64 characters. See
+[nodes without a payload](/docs/2.x/pro/custom-nodes-reference#nodes-without-a-payload).
+
+Modules are read once, at construction. Changing the array afterwards does nothing; remount the Root.
+
+Everything else is optional: `label` and `chrome.color` for the chip, `onClick` / `onHover` /
+`onEdit`, `reviewCard` for a sidebar card, `preserveOnExport` for what leaves. See the
+[reference](/docs/2.x/pro/custom-nodes-reference#definecustomnode).
+
+## Render the chips
+
+Chips are content-locked by default, so editing runs through the context menu:
+
+```tsx
+import { CustomNodeChrome, CustomNodeContextMenu } from '@docx-editor.dev/pro/react';
+
+<DocxEditor.Viewport>
+  <DocxEditor.Content />
+  <CustomNodeChrome onNodeClick={(node) => openPopover(node)} />
+  <DocxEditor.ContextMenu>
+    <CustomNodeContextMenu onEditNode={(node) => openEditForm(node)} />
+  </DocxEditor.ContextMenu>
+</DocxEditor.Viewport>;
+```
+
+An activated node carries `name`, `attrs`, `tag`, `data` and `rect` (viewport-relative, for
+anchoring your own popover), plus `nodeId` and `text` when they resolve.
+
+Remove can be refused, by a locked wrapper or a document open for viewing. Pass
+`onRemoveRefused(node, reason)` to show the engine's reason; without it the menu just closes.
+
+## Insert, update, remove
+
+```ts
+import { insertCustomNode, removeCustomNode, updateCustomNode } from '@docx-editor.dev/pro';
+
+insertCustomNode(editor, Citation, { data }); // at the caret, or at input.at
+updateCustomNode(editor, Citation, nodeId, { data }); // rewrites in place
+removeCustomNode(editor, nodeId); // node and payload
+```
+
+All three writes use one transaction and create one undo step, including payload changes. Successful
+inserts and updates return `{ ok: true, changed: true, nodeId }`; refusals include a `reason` and a
+`code`.
+
+An update replaces the control and returns its new node ID. The ID passed to `updateCustomNode` no
+longer resolves, so update any state that held it:
+
+```tsx
+const result = updateCustomNode(editor, Citation, card.nodeId, { data: next });
+if (result.ok && result.nodeId) setCard({ ...card, nodeId: result.nodeId });
+```
+
+A payload the schema rejected comes back with `issues`, each pointing at a field:
+
+```tsx
+const result = insertCustomNode(editor, Citation, { data: form });
+if (!result.ok) {
+  for (const issue of result.issues ?? []) {
+    setFieldError(issue.pointer, issue.message); // 'year', 'authors.0'
+  }
+}
+```
+
+`attrs`, `lock`, `alias`, `at` and the three refusal codes are in the
+[reference](/docs/2.x/pro/custom-nodes-reference#writes).
+
+## Read the nodes
+
+```ts
+import { customNodesOf } from '@docx-editor.dev/pro';
+
+for (const node of customNodesOf(editor)) {
+  const citation = Citation.dataOf(node);
+  if (citation) index.add(citation.sourceId); // typed
+}
+```
+
+`customNodesOf` returns recognized nodes from the document body in document order. It excludes
+headers, footers, footnotes and endnotes. Because each call reads the current document and no change
+event exists, call it again after every edit. Do not retain the returned array.
+
+Chrome and read surfaces carry every definition's nodes under one type, so their `data` is
+`unknown`. `dataOf` narrows a node to this definition and validates its payload, so you never write
+a parse at the call site:
+
+```tsx
+<CustomNodeChrome onNodeClick={(node) => open(Citation.dataOf(node))} />
+```
+
+Inside `text`, `reviewCard` and `fromDocx`, `data` is already the schema's output type.
+
+`data` is `undefined` when the node carries no payload, when its binding names a store node the
+document does not hold, or when the payload fails the schema. The last two report through
+`onDiagnostic`:
+
+```ts
+customNodesModule({
+  nodes: [Citation],
+  onDiagnostic: ({ code, name, nodeId, issues }) => {
+    // code: 'payload-invalid' | 'payload-missing'
+    console.warn(`${name} ${nodeId}: ${code}: ${issues.join(', ')}`);
+  },
+});
+```
+
+## Save vs export
+
+Use `editor.save()` for the copy you store. Word and Word Online preserve the node's text, lock, tag,
+binding and payload.
+
+Use `saveForExport` when recipients must not receive custom-node markup, such as internal
+annotations. Generate that external copy separately from the saved document.
+
+```ts
+import { saveForExport } from '@docx-editor.dev/pro';
+
+// The copy you keep. Reopens here with the chips working.
+await storage.put(docId, new Uint8Array(await editor.save()));
+
+// The copy that leaves. Notes removed, citations flattened to their words.
+const outgoing = await saveForExport(editor);
+if (!outgoing.ok) throw new Error(outgoing.reason);
+download(outgoing.bytes);
+```
+
+`preserveOnExport` decides per definition: `true` (default) travels whole, `'text'` keeps the words
+and drops the control, `false` removes the node and its content. A tag no definition claims is never
+touched.
+
+Store the saved bytes, not the exported ones. What the export stripped is gone: unwrapped text does
+not become a node again.
+
+<Callout>
+  `saveForExport` needs an editor. On a server, `prepareForExport(bytes, definitions)` is the same
+  pipeline over bytes with no DOM. A definition you do not pass is not touched. See
+  [export](/docs/2.x/pro/custom-nodes-reference#export).
+</Callout>
+
+## Common configurations
+
+**A mention, no payload.** Everything fits in the tag, so there is no schema and no customXml part.
+`fromDocx` clamps the untrusted strings a `.docx` hands you, or returns `null` to leave the control
+literal:
+
+```ts
+const Mention = defineCustomNode({
+  name: 'mention',
+  tagPrefix: 'acme',
+  fromDocx: ({ attrs }) => (attrs['userId'] ? attrs : null),
+});
+```
+
+**An internal note that must not leave.** Kept on save, removed on export:
+
+```ts
+const InternalNote = defineCustomNode({
+  name: 'note',
+  tagPrefix: 'acme',
+  schema: NoteData,
+  text: (data) => data.body,
+  preserveOnExport: false,
+});
+```
+
+**A node written on a server.** `customNodeXml` builds the same control as XML without an editor or
+DOM. For a payload-bearing node, server authoring must also add the payload package parts, their
+relationships and the properties part's content-type override. The document opens here with the
+node recognized:
+
+```ts
+import { customNodeXml } from '@docx-editor.dev/pro';
+
+const built = customNodeXml(Citation, { sourceId: 'smith-2024' }, '(Smith 2024)', {
+  data: { sourceId: 'smith-2024', author: 'Smith', year: 2024 },
+});
+if (built.ok) template.replace('{{citation}}', built.xml);
+```
+
+`built.store` returns two parts, two relationships and one content-type override. Add all five items
+or Word offers to repair the file. See
+[server-side authoring](/docs/2.x/pro/custom-nodes-reference#server-side-authoring).
+
+**A card in the review sidebar.** `reviewCard` contributes one card per node, anchored at its range.
+`useReviewItem()` scopes your content to the card it renders inside:
+
+```tsx
+import { DocxEditorReview, useReviewItem } from '@docx-editor.dev/pro/react';
+
+function CitationActions() {
+  const item = useReviewItem();
+  if (item?.kind !== 'custom') return null;
+  return <button onClick={() => openSource(item)}>Open source</button>;
+}
+
+<DocxEditorReview>
+  <CitationActions />
+</DocxEditorReview>;
+```
+
+This needs the review module registered alongside the custom-nodes module.
+
+## Next steps
+
+- [Custom nodes reference](/docs/2.x/pro/custom-nodes-reference): every parameter, every error code,
+  the on-disk format
+- [Runnable example](https://github.com/eigenpal/docx-editor/tree/main/examples/custom-nodes):
+  define, insert, edit, and round-trip a citation with a payload
+- [Content controls](/docs/2.x/guides/content-controls): the built-in control surface these build on

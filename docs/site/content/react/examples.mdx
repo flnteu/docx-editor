@@ -1,0 +1,126 @@
+---
+title: 'React examples'
+description: 'Concrete patterns for the current React root surface: mount bytes, save through the ref, compose custom chrome, and automate an open editor.'
+category: 'React'
+order: 34
+---
+
+Each example uses the current root exports only.
+
+## Load DOCX bytes
+
+```tsx
+import { useEffect, useState } from 'react';
+import { DocxEditor } from '@docx-editor.dev/react';
+
+export function Editor({ url }: { url: string }) {
+  const [doc, setDoc] = useState<Uint8Array>();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(url)
+      .then((r) => r.arrayBuffer())
+      .then((buffer) => {
+        if (!cancelled) setDoc(new Uint8Array(buffer));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  return <DocxEditor document={doc} title="Proposal.docx" />;
+}
+```
+
+## Save through the ref
+
+```tsx
+import { useRef } from 'react';
+import { DocxEditor, type DocxEditorRef } from '@docx-editor.dev/react';
+
+export function SaveButton({ bytes }: { bytes: Uint8Array }) {
+  const ref = useRef<DocxEditorRef>(null);
+
+  async function save() {
+    const next = await ref.current?.save();
+    if (!next) return;
+    await fetch('/api/documents/42', { method: 'PUT', body: next });
+  }
+
+  return (
+    <>
+      <button onClick={() => void save()}>Save</button>
+      <DocxEditor ref={ref} document={bytes} />
+    </>
+  );
+}
+```
+
+## Compose custom chrome
+
+```tsx
+import { DocxEditor, useEditorCommand } from '@docx-editor.dev/react';
+
+function BoldButton() {
+  const bold = useEditorCommand('text.bold');
+  return (
+    <button
+      onMouseDown={(e) => e.preventDefault()} // chrome must not steal the caret
+      onClick={() => bold.execute()}
+      disabled={!bold.isEnabled}
+    >
+      Bold
+    </button>
+  );
+}
+
+export function CustomChrome({ bytes }: { bytes: Uint8Array }) {
+  return (
+    <DocxEditor.Root document={bytes}>
+      <DocxEditor.Toolbar>
+        <BoldButton />
+      </DocxEditor.Toolbar>
+      <DocxEditor.Viewport>
+        <DocxEditor.Navigation />
+        <DocxEditor.Content />
+        <DocxEditor.HyperLink />
+        <DocxEditor.ContextMenu />
+      </DocxEditor.Viewport>
+    </DocxEditor.Root>
+  );
+}
+```
+
+## Automate an open editor
+
+```tsx
+import { useDocxEditor } from '@docx-editor.dev/react';
+import { DocxEditor } from '@docx-editor.dev/editor-api/browser';
+
+export function AutomateButton() {
+  const editor = useDocxEditor();
+
+  async function run() {
+    if (!editor) return;
+    const runtime = DocxEditor.createBrowser(editor);
+    try {
+      await runtime.run(async (context) => {
+        const first = context.document.body.paragraphs.getFirst();
+        first.load('text');
+        await context.sync();
+      });
+    } finally {
+      runtime.dispose();
+    }
+  }
+
+  return <button onClick={() => void run()}>Inspect first paragraph</button>;
+}
+```
+
+## Next steps
+
+- [React package overview](/docs/2.x/react)
+- [Props reference](/docs/2.x/react/props)
+- [Toolbar guide](/docs/2.x/guides/toolbar)
+- [Editing API](/docs/2.x/editor-api)

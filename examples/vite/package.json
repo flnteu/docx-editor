@@ -8,15 +8,19 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@eigenpal/docx-editor-agents": "workspace:*",
-    "@eigenpal/docx-editor-core": "workspace:*",
-    "@eigenpal/docx-editor-react": "workspace:*",
+    "@docx-editor.dev/core": "workspace:*",
+    "@docx-editor.dev/fonts": "workspace:*",
+    "@docx-editor.dev/i18n": "workspace:*",
+    "@docx-editor.dev/pro": "workspace:*",
+    "@docx-editor.dev/react": "workspace:*",
+    "fflate": "^0.8.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/react": "^19.2.15",
-    "@types/react-dom": "^19.0.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "^6.0.3",
     "vite": "^8.0.10"

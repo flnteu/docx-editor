@@ -1,285 +1,193 @@
-# @eigenpal/docx-editor-core
+# @docx-editor.dev/core
 
-## 1.1.0
+## 2.5.0
 
 ### Minor Changes
 
-- 9d7138e: Add `fonts` prop on `<DocxEditor>` for declarative custom font registration. Each entry injects an `@font-face` pointing at the URL you provide. Multiple entries can share `family` to register different weights. Fixes #620.
-
-  ```tsx
-  <DocxEditor
-    fonts={[
-      { family: 'Custom Sans', src: '/fonts/CustomSans-Regular.woff2' },
-      { family: 'Custom Sans', src: '/fonts/CustomSans-Bold.woff2', weight: 700 },
-    ]}
-  />
-  ```
-
-  For Google Fonts, keep using `loadFont(name)` from `@eigenpal/docx-editor-core/utils` — it loads the family from the Google Fonts CSS API directly:
-
-  ```ts
-  import { loadFont } from '@eigenpal/docx-editor-core/utils';
-  import { useEffect } from 'react';
-
-  useEffect(() => {
-    void loadFont('Pacifico');
-  }, []);
-  ```
-
-  Also exposes `loadFontFromUrl`, `loadFontDefinitions`, and the `FontDefinition` type from `@eigenpal/docx-editor-core/utils`.
-
-- 9d7138e: Font-load failures (Google Fonts, `loadFontFromUrl`, `loadFontFromBuffer`) now route through the React `onError` prop and the Vue `error` event instead of writing directly to the console. Wire either to pipe these into Sentry, Datadog, or your own error tracker. When no subscriber is attached (headless / SSR / pre-mount), the loader falls back to `console.warn` so errors are not silently dropped.
-
-  Adds `onFontError(callback)` to `@eigenpal/docx-editor-core/utils` for non-adapter hosts.
-
-- 42ea72d: Track structural edits as OOXML revisions in suggesting mode (fixes #614).
-
-  Authoring:
-  - Pressing Enter in suggesting mode marks the new paragraph break as
-    tracked (`<w:pPr><w:rPr><w:ins/>`); Backspace at paragraph start marks
-    the prior break as deleted (`<w:del/>`) without actually joining until
-    accepted.
-  - `addRowBelow` / `addRowAbove` / `deleteRow` in suggesting mode set
-    `trIns` / `trDel` plus mirroring `cellMarker` on each cell instead of
-    mutating the table structure.
-  - Editing paragraph properties in suggesting mode records a `pPrChange`
-    entry with the prior `ParagraphFormatting` snapshot.
-
-  Round-trip preservation:
-  - Paragraph-mark insertion / deletion (`<w:pPr><w:rPr><w:ins/></w:del/>`),
-    paragraph property changes (`<w:pPrChange>`), table row insertion /
-    deletion (`<w:trPr><w:ins/></w:del/>`), row property changes
-    (`<w:trPrChange>`), cell insertion / deletion / merge
-    (`<w:cellIns>`, `<w:cellDel>`, `<w:cellMerge>` with `w:vMerge` value
-    preserved), cell property changes (`<w:tcPrChange>`), table property
-    changes (`<w:tblPrChange>`) — all parse, round-trip, and re-emit per
-    the ECMA-376 schema (CT_PPrBase containment for `*Change` previous
-    snapshots, schema-mandated ordering, single `*Change` per parent,
-    no `w:rsid` on `CT_TrackChange` extensions).
-
-  Accept / Reject:
-  - New commands `acceptChangeById(id)` / `rejectChangeById(id)` resolve
-    any revision in one PM transaction. Per Word semantics: accept
-    `pPrIns` clears the marker; reject joins-with-next (resulting
-    paragraph inherits the second paragraph's `pPr`). Reject `pPrChange`
-    restores the prior properties onto the paragraph.
-  - `acceptAllChanges` / `rejectAllChanges` now resolve every revision
-    type (inline marks, paragraph-mark, paragraph-property, row, cell,
-    table-property), not just inline.
-
-  Sidebar:
-  - Existing TrackedChange sidebar surfaces every new revision type:
-    paragraphMarkInsertion, paragraphMarkDeletion, paragraphPropertiesChanged,
-    rowInserted, rowDeleted, rowPropertiesChanged, cellInserted, cellDeleted,
-    cellMerged, cellPropertiesChanged, tablePropertiesChanged. Accept /
-    Reject buttons route via `acceptChangeById` / `rejectChangeById`. React
-    and Vue cards both i18n-localized (15 new `revisions.*` keys across
-    all 7 locales). Multi-site revisions (row + N cells under one
-    `(id, author, date)` triple) collapse to a single sidebar entry.
-
-  Painter:
-  - Pilcrow ¶ glyph at end of revised paragraphs (insertion green,
-    deletion red strikethrough); vertical margin change-bar; colored
-    row/cell borders for trIns/trDel/cellMarker; dashed boundary for
-    unaccepted vertical cellMerge. Painter styles live in
-    `@eigenpal/docx-editor-core/prosemirror/editor.css` and both adapters
-    inherit (React + Vue parity).
-
-  What's NOT yet covered (follow-up PRs):
-  - `<w:sectPrChange>` (section property revisions)
-  - `<w:rPr><w:rPrChange>` paragraph-mark formatting (CT_ParaRPrChange,
-    distinct from run rPrChange)
-  - `<w:moveFrom>` / `<w:moveTo>` round-trip
-  - `<w:numPr><w:ins/>` (numbered-list assignment tracking)
-  - Suggesting-aware `addColumnLeft` / `addColumnRight` / `deleteColumn`
-    (TODOs in source reference the spec)
-  - Agents-package surface for the new structural-revision fields
-  - Collaboration / multi-author conflict semantics (single-user only)
-
-  OOXML conformance audit, code review, and simplification pass have
-  been folded back into this branch; see PR #616 for the per-phase
-  review history.
+- d905af3: PAGE, NUMPAGES, and SECTIONPAGES fields in the document body (and body tables) now render the page number, document page count, or section page count when the field has no cached result, instead of showing blank.
+- 5c65a88: Opening a large document now shows a loading screen instead of freezing the page: the engine mounts it behind one painted frame, `snapshot().isOpening` reports that window, and `DocxEditor.Loading` gains an `overlay` variant that the packaged React frame mounts by default.
+- d905af3: Document-property fields (TITLE, AUTHOR, SUBJECT, KEYWORDS, LASTSAVEDBY, COMMENTS, and DOCPROPERTY for those names) now render their value from the document properties when the field has no cached result, instead of showing blank.
+- d905af3: HYPERLINK field links now work with the link popover the same way typed links do: the popover opens read-only over one, Ctrl/Cmd+K reaches it, and it dismisses when the caret leaves the field. Two adjacent HYPERLINK fields that point at the same target now render as two separate links.
+- 346cc78: Tracked changes on a paragraph mark now reach the page and the review pane: every decision on a mark is read rather than the first, a paragraph moved whole raises a card and resolves, a format change on the mark is published, a mark inside a table cell is drawn, the margin gets its change bar, and a resolved view draws no attribution. Renumbering a list or a footnote, and every field a fragment publishes, now take part in incremental layout reuse, so a reused page no longer shows a value the document has moved past.
+- 289a7a1: Clicking a tracked-change card now opens that card, and text one reviewer inserted and another struck opens the deletion, as Word reads it.
+- 5a2f3ed: A review card for a paragraph break now says which change it is. A deleted break read as "Inserted paragraph break", which is the reverse of what accepting that card does, and both halves of a moved paragraph read the same way.
+- 5a2f3ed: The resolved display modes now merge the paragraphs their decisions merge, in the body, in table cells, and in headers and footers: a paragraph whose mark a tracked change deleted runs into the next one in the final view, as it does in Word and as accepting the change already did. Accepting a run of deleted paragraph marks also collapses them into one paragraph rather than into pairs, and no longer carries content past a table or a content control.
+- 266a086: The `mode` option accepts `'suggesting'` and now decides the mode a document opens in; the React and Vue `<DocxEditor>` components default it to `'edit'`, so a document carrying `w:trackRevisions` opens ready to type there. Omit `mode` on `createDocxEditor` or `DocxEditor.Root` to keep following the document's request.
+- d905af3: SYMBOL, MACROBUTTON, and GOTOBUTTON fields and w:sym symbol runs now render, legacy FORMCHECKBOX and FORMDROPDOWN fields paint their w:ffData state, and PAGE-family fields nested inside other fields evaluate per page. HYPERLINK fields are clickable links with the same target sanitization as typed hyperlinks.
 
 ### Patch Changes
 
-- 30c1931: Handle DOCX tables with fully covered vertical-merge rows without creating invalid empty table rows.
-- ebb85a5: Tolerate stray `&` in DOCX XML parts. Previously, a single unescaped ampersand anywhere in `document.xml`, a header, footer, or comments part would fail the whole parse with "Invalid character in entity name". Stray ampersands are now escaped before handing off to the underlying XML parser, and when a parse error still escapes through, the message includes a snippet of the bytes around the offending column.
-- e5e0997: Header/footer editing now uses the body's hidden-PM + visible-painter model: one persistent off-screen EditorView per HF rId, with the painter as the sole visible renderer in both edit and non-edit modes. Click, drag, multi-click, selection rects, right-click, image select, hyperlink, table column/row/edge resize, and field inserts (PAGE/NUMPAGES) now route through a single pointer pipeline and match body parity. Fixes #468.
+- f3e5d58: Keystrokes arriving in a burst now land as one transaction and one layout flush instead of one per character, so fast typing in long documents stays responsive; a burst is also one undo step and one tracked change.
+- 192c644: Pasting from an application that offers only an HTML flavour now recovers its text more faithfully: an attribute value holding a `>` no longer truncates the paste, unterminated markup is no longer pasted as literal text, and a very large table no longer blocks the page. Reading a document's content types no longer uses a pattern a crafted file could make backtrack.
+- f811b44: Memoize package snapshots, section enumeration, and list resolution so a keystroke in a long document no longer rescans the whole tree; typing in large documents is significantly faster.
+- 4a57eed: Update harfbuzzjs to 1.6.0 (HarfBuzz 14.3.0). Shaping output does not change.
+  - @docx-editor.dev/i18n@2.5.0
 
-## 1.0.3
-
-### Patch Changes
-
-- 24b31a4: Numbered paragraphs whose direct `w:ind` has a first-line indent but no hanging slot (e.g. `<w:ind w:left="0" w:firstLine="720"/>`) now render the marker inline with the first body line at the firstLine position, matching Word/LibreOffice. Previously the painter wrapped the marker into a separate row above the text and the layout engine didn't reserve space for that row — the last line of the first fragment spilled below its container and the continuation fragment rendered on top of it (fixes #483).
-- ec36a50: Footnote references authored inside table cells (and text boxes) are now collected by the page-reservation pass. Previously `collectFootnoteRefs` walked only top-level blocks and skipped tables entirely, so nested refs never reached `mapFootnotesToPages` and the per-page footnote area silently dropped them while the body still rendered the in-line superscript marker. Fixes #584.
-- 143c31e: Numbered paragraphs that write a neutral `w:hanging="0"` direct indent now keep the numbering level's hanging indent, mirroring the fix already in place for `w:firstLine="0"`. Per ECMA-376 §17.3.1.12, both are no-op values and shouldn't suppress the level-defined indent.
-- d91357e: Render text boxes in headers and footers. Headers and footers now flow through the same block-content parser as the document body, so text boxes (and bullet-glyph conversion) are parsed everywhere a Word user can place them. The header/footer page painter also now draws `textBox` and `image` blocks, which it previously measured but never painted — so a header/footer text box that only appeared in the inline editor now also shows in the page view.
-- bdd7f50: Preserve numbered paragraph hanging indents when DOCX paragraphs include a neutral first-line indent override.
-- 6d56181: Vue now renders documents with stacked floating objects identically to React. Previously, the Vue composable ran a simplified measurement pipeline without floating-zone awareness, so anchored images / floating textboxes / floating tables would not push body text below them in Vue. The float-extraction and per-block orchestration is now shared from `@eigenpal/docx-editor-core/layout-bridge` (`measureBlocksWithFloats`); both adapters call it with their own per-block measure callback.
-- e80093d: Body text now flows around stacked floating objects correctly. Documents with a side-anchored textbox plus an image floating to the right, or with a floating table whose width fills the page, used to render body paragraphs at full content width on top of the floats, push tables to the page top, or collapse the first paragraph to a single glyph per line. All three cases now match Word's layout.
-
-## 1.0.2
+## 2.4.1
 
 ### Patch Changes
 
-- 4e73af5: Fix paragraph text wrapping onto an extra line when a right (`end`) or center tab stop is used (for example a header with a logo, a right tab, then text).
+- @docx-editor.dev/i18n@2.4.1
 
-  The line measurer and the page painter each had their own tab-stop code. The measurer ignored the stop's alignment and the left indent, and used a coarse default-tab grid, so right-tabbed content was measured too wide and wrapped even though the painter laid it out on one line. Both now share one tab-stop model (`calculateTabWidth`): the same stop grid, indent handling, and `end`/`center`/`bar` alignment, so measurement and paint agree.
-
-## 1.0.1
+## 2.4.0
 
 ### Patch Changes
 
-- 8d60d65: Extract WPS text-box drawings wrapped in `<mc:AlternateContent>` so floating text boxes from real Word docs (org-chart cards, callouts, etc.) round-trip through the parser instead of being silently dropped. The parser now walks both the direct `<w:drawing>` child of `<w:r>` and the `<mc:Choice>` / `<mc:Fallback>` branches of an `<mc:AlternateContent>` wrapper (preferring `Choice`).
-- 7806b78: Clamp floating table and image wrap margins when they exceed the content width, fixing collapsed single-glyph line layout after near-full-width floating tables. Same fix applied at both wrap-zone sites: `rectsToFloatingZones` (page paint) and the React adapter's `extractFloatingZones` (pre-measurement scan).
-- a193caa: Render TOC entries with Word fidelity: preserve tabs inside `<w:hyperlink>` (dot leaders no longer collapse) and inherit the TOCx paragraph color instead of the Hyperlink character style's blue + underline. Right-aligned tabs at line edges promote the line to flex layout so trailing page numbers land flush against the right margin without canvas-vs-DOM measurement drift.
+- @docx-editor.dev/i18n@2.4.0
 
-  Also adjusts hyperlink anchor styling: anchors now inherit color and underline from the wrapping span (which `applyRunStyles` already styles from `run.color` / `run.underline`). The Word-default blue + underline fallback only fires when neither is resolved on the run. Documents with hyperlinks that explicitly set a non-default color or remove the underline will now reflect that, where previously the painter overrode them.
+## 2.3.1
 
-- fe4cb94: Add per-locale subpath imports to `@eigenpal/docx-editor-i18n` so dynamic
-  locale loading can code-split a single locale instead of bundling the whole
-  set:
+### Patch Changes
 
-  ```ts
-  // Static — bundler ships only this locale's strings
-  import pl from '@eigenpal/docx-editor-i18n/pl';
+- 1c9b6a2: Long documents now reuse pagination after explicit page and section breaks, avoiding full-document work for ordinary typing, wrap-inducing edits, and character, word, line, vertical, or document-edge caret movement. Rapid typing preserves input order while coalescing pending page, toolbar, and review-rail refreshes, and repeated tracked deletions stay compact instead of adding one OOXML run per keypress.
+- 1c9b6a2: Rapid typing no longer reorders characters when a deferred paint leaves the DOM caret behind the model. Native and touch carets that return to that leftover offset still edit there.
+  - @docx-editor.dev/i18n@2.3.1
 
-  // Dynamic — splits into its own chunk, loaded on demand
-  const pl = (await import('@eigenpal/docx-editor-i18n/pl')).default;
-  ```
+## 2.3.0
 
-  Subpaths ship for every locale: `/en`, `/de`, `/he`, `/pl`, `/pt-BR`, `/tr`,
-  `/zh-CN`. The named exports on the package root still work — pick the
-  ergonomic path for static lists, the subpath for runtime locale switching.
+### Patch Changes
 
-  Also re-export `createEmptyDocument`, `createDocumentWithText`, and
-  `CreateEmptyDocumentOptions` from `@eigenpal/docx-editor-react` and
-  `@eigenpal/docx-editor-vue` so the common "spawn a blank editor"
-  affordance no longer requires installing `-core` alongside the adapter.
+- @docx-editor.dev/i18n@2.3.0
 
-  Surface `Comment`, `CommentRangeStart`, `CommentRangeEnd`,
-  `TrackedChangeInfo`, `TrackedRunChange`, `Insertion`, `Deletion`,
-  `MoveFrom`, `MoveTo`, and `ParagraphContent` from the main
-  `@eigenpal/docx-editor-core` entry. They were already public via
-  `@eigenpal/docx-editor-core/headless`; the main entry just hadn't been
-  re-exporting them.
+## 2.2.1
 
-## 1.0.0
+### Patch Changes
+
+- 35f6d04: Fix exported comment replies opening as separate comments instead of a thread in Microsoft Word.
+  - @docx-editor.dev/i18n@2.2.1
+
+## 2.2.0
+
+### Minor Changes
+
+- 3096225: The document now fits its container by default, so a narrow window shrinks the page instead of overflowing it and opening the comments pane shrinks the document rather than pushing it off screen. Drive it with `Editor.setZoomMode` or React's new `useZoom` hook, and pass `zoomMode={{ type: 'fixed' }}` to keep the old behavior.
+
+### Patch Changes
+
+- 9c25492: Keep legacy FORMTEXT result text editable with character-accurate caret and selection offsets.
+- 04c2379: Programmatic selections made while embedded fonts load now keep their range and visible highlight after the shaped-font remount.
+- f0e4ab9: Tracked changes on a field's result now render as tracked. A deletion or insertion around the value of a cross-reference, page number or form field previously painted as ordinary unchanged text, so a reviewer saw no strikethrough or author colour on an edit the review sidebar was reporting correctly. A paragraph containing such a field also measured longer than what was laid out from it, which put the caret and the keystroke at different offsets — clicking after the field placed the cursor in one place and typing appeared in another. `w:fldSimple` now paints its cached result instead of blank space, allowlisted PAGE/NUMPAGES/SECTIONPAGES nested inside a non-page simple field evaluate per sheet rather than reusing the saved cache, and field results carry Word's grey field shading — always for legacy form fields unless the document sets `w:doNotShadeFormData`, and per the new `fieldShading` option (`never` / `when-selected` / `always`) for the rest.
+- Updated dependencies [568ccf7]
+  - @docx-editor.dev/i18n@2.2.0
+
+## 2.1.3
+
+### Patch Changes
+
+- @docx-editor.dev/i18n@2.1.3
+
+## 2.1.2
+
+### Patch Changes
+
+- efd3d76: Menus and popovers now paint above the editor's own furniture. Toolbar dropdowns, the menu bar, colour pickers and the hyperlink popover sat at a lower z-index than the navigation gutter and table chrome, so opening File put the menu underneath the navigation toggle. Layering is now three `--doc-z-*` tokens (`chrome`, `overlay`, `context`) rather than a dozen hand-picked numbers.
+- 69a97f3: `setActiveReviewItem` and `useReview().setActive` take a `reveal` option, so a host can choose where an activated change lands instead of taking the engine's default: `'start'`, `'center'`, `'centerIfNeeded'`, `'nearest'`, or `false` to select the item without moving the viewport at all.
+- ede69f6: Activating a review card now reports whether it landed. `setActiveReviewItem` returns an `ExecResult` and `useReview().setActive` a boolean, so a host walking the queue with next/previous controls can tell a step that did nothing from one that worked — activation is refused for an unknown key, an item with no range, a story that will not open, and a revision kind the rail excluded. Review items carry a matching `activatable` flag, so a card that cannot be clicked can be drawn that way instead of discovering it on click.
+- 802ab3e: The collapsed review rail now draws a glyph for what each marker actually is — an insertion, a deletion, a formatting change, a comment or a custom node — instead of one comment bubble for every kind. A custom node names its own through `reviewCard`'s new `icon`, and the `Markers` part takes an `icon` of its own for a host that wants to draw all of them itself.
+- 4fa91bd: The painted-document rules are now scoped to the editor. Around a hundred `.layout-*` and `.paged-editor*` selectors shipped unscoped, so a host with its own `.layout-page-header` or `.layout-page-content` had those elements restyled by the editor's stylesheet. The class names are unchanged; only the rules moved under `.docx-editor`. The stylesheet guard now exempts `.docx-` alone, so nothing else can ship unanchored.
+- 4fa91bd: The y-prosemirror remote-cursor styles are now scoped to the editor. `.ProseMirror-yjs-cursor` is y-prosemirror's class name rather than one the engine mints, and it shipped unscoped, so a host running its own ProseMirror editor with Yjs on the same page had its remote cursors restyled. The stylesheet guard no longer treats `.ProseMirror-` as an engine-owned namespace.
+  - @docx-editor.dev/i18n@2.1.2
+
+## 2.1.1
+
+### Patch Changes
+
+- d74c5d6: Jumping to a tracked change or a selection now lands on it: the reveal was measuring caret geometry against the top of the sheet rather than the page's content box, so every jump stopped one page margin short and left the target just under the fold. Reveals that have to travel now centre their target instead of stopping the moment it clears the bottom edge, and one that is already on screen still does not move.
+  - @docx-editor.dev/i18n@2.1.1
+
+## 2.1.0
+
+### Minor Changes
+
+- a9fd363: BMP and WebP images now render instead of showing an unsupported-format placeholder.
+- 3310029: Custom nodes can carry a payload larger than the 64-character `w:tag` cap, in a customXml data part an SDT binds to, with a sweep that collects payloads whose control was deleted and a removal that leaves no record of the store for documents exported outside the system.
+- d116599: Custom nodes can be inserted, updated and removed inside a header, footer or note, including a node carrying a payload: the control lands in that story while its customXml store stays on the main document part, where Word looks for it. Which story a write targets now comes from the node or paragraph id rather than from wherever the reader happens to be, so a caller can address a node in a story it has left. Inserting, updating and removing all refuse a document open for viewing instead of editing it — these writes go through the store, below the editing-mode gate — and report the same `locked` code the engine's own refusal uses.
+- dbf5501: Every remaining `ep-` prefixed CSS class and keyframe is renamed to `docx-editor-`, so the whole stylesheet shares one namespace with the `.docx-editor` root class. If your own CSS targets an `.ep-*` class or the `ep-caret-blink` keyframe, switch it to the same name under `docx-editor-` (`.ep-one-surface__caret` becomes `.docx-editor-one-surface__caret`).
+- 8b4830e: Review navigation now goes where it says it does: activating a card selects the item's whole range and scrolls to it even when your own UI holds focus or the target page is not yet materialized, walking from a header change back to a body change leaves the header story so the body card activates again, and the `setSelection` command reveals its target. New `setReviewActivationExclusions` lets a host rail tell the engine which revision kinds it hides, so clicking tracked text never opens a card the rail does not render.
+- 7a72c42: Tracked changes and comments inside footnotes and endnotes now reach the review queue. They get cards with real geometry, `getTrackedChanges` names the story holding them, the caret can make one active, opening a card enters that note, accept and reject resolve against the note's own part, and a note card can be replied to — commenting anywhere after a note reference was refused before, because the offset walk counted note marks as no characters. Commenting outside the body works the same way: a range selected in a header, footer or note offers the affordance and the comment lands in that story. `focus(scope)` honours its argument, and a scope it cannot open is refused without first closing the story the reader had open.
+- 43c3e6a: The shipped stylesheet is now precompiled and fully namespaced: every Tailwind utility, editable-surface rule and keyframe is scoped under the renamed `.docx-editor` root class (previously `.ep-root`), so the CSS no longer collides with a host app's Tailwind setup and styles the chrome correctly in hosts without Tailwind. If your own CSS targets `.ep-root`, switch it to `.docx-editor`.
+- d793994: TIFF images now render instead of reserving their extent behind a placeholder. The image decode port's `convertMetafile` hook is renamed to `convertPreserved` and receives TIFF alongside EMF and WMF.
+
+### Patch Changes
+
+- d793994: The caret now carries a contrasting ring, so it stays visible against dark content. Clicking beside a dark image, or arrowing onto the line one sits on, no longer leaves the insertion point invisible.
+- 6dee1e3: Comment markers now land on the character they were asked for in paragraphs holding a drawing, a field or an inline content control, and a comment can be anchored inside a content control at all. The comment writer measured those paragraphs with a walk of its own that counted such elements as nothing, so commenting near one was either refused outright or, worse, placed the marker silently on the wrong character. A marker at the far edge of a complex field is also placed after the whole field rather than among its parts, where Word would drop it on the next field rebuild.
+- f4eac0c: Update fast-xml-parser to 5.10.1.
+- b3e3457: Pin the node and mark name unions on `treeSchema` so the generated type declaration is identical between builds.
+- 7dce3ba: Keep sub-1pt drawing extents at full paint height so Word's hairline form-rule bars stay visible instead of shrinking to a sub-pixel clip.
+- a758db1: Fix images in a header or footer staying on the loading placeholder forever. The picture decodes, but the page kept the furniture it was laid out with, so it never showed.
+- 42406bc: Header and footer ink now overflows its band like Word instead of being clipped: anchored shapes offset past the content width or below the header text stay visible, and negative indents hang into the margin. Overflowing shapes stay inert until the band is edited, so they never swallow clicks meant for the body.
+- d793994: Fix a band of blank space under an inline image in a paragraph using multiple line spacing. The multiple now scales the text line, as Word does, instead of the image's own height.
+- d89ef55: Stop binding Cmd+R for right alignment on macOS: the browser reserves that chord for reload, so the old binding re-aligned the paragraph and the page still reloaded. Right alignment stays on Ctrl+R on every platform.
+- d56b1a5: Speed up the document pipeline on long documents: opening, laying out, editing and saving a 500-page document is roughly a third faster end to end, and unchanged-document layout passes drop by more than half. Parsing, validation, layout keying and serialization now avoid recomputing facts already proven for unchanged, immutable nodes; no validation or security bound changed.
+- 34be525: Apply Word's automatic paragraph spacing when `w:beforeAutospacing` or `w:afterAutospacing` is set, instead of the measurement the flag replaces. Documents written by Word's HTML filter carry it on every paragraph and were laid out 9pt tight per boundary, which moved page breaks.
+- 765e617: Stop applying paragraph-mark `w:pPr/w:rPr` font size to content runs that inherit the paragraph style. Mark formatting still sizes empty lines and last-line mark height.
+- 113ed44: Tracked changes from other editors now coalesce the way Word shows them: adjacent same-author deletions or insertions merge into one review card, and a deletion meeting an insertion pairs into a single Replaced card regardless of how far apart their timestamps are.
+- 3f70246: Speed up comment and tracked-change derivation on heavily reviewed long documents: re-reading the review queue over an unchanged document is ~25x faster, and the re-derive after an accept, reject, comment write or undo drops by more than half. Derivation semantics are unchanged.
+- 8b4830e: Review and navigation now land in the story they name: accepting or rejecting a header or footer card leaves the caret inside that story instead of throwing it into the body (after which every keystroke was silently refused), replying to a header or footer card writes into that part instead of being refused, and jumping to a body search hit or outline heading leaves an open header or note first.
+- 585413d: Fix caret and hit-test drift on lines containing superscript or subscript text. The shaped measurer rounded the reduced super/subscript size to a whole half-point, measuring those runs up to 3% wider than they paint; the caret landed mid-glyph for the rest of the line.
+- cc82d50: Pictures inside footnotes, endnotes and text boxes now render. They previously painted nothing at all, not even a placeholder.
+- ec538fa: Fix suggesting mode dropping text typed at the start of a paragraph that carries properties, which made the keyboard look dead in the item Enter had just opened. An empty list item's marker also no longer paints over the item above it.
+- 45c9b93: Anchored text boxes now render their content clipped inside the shape's extent in the body, headers, and footers, with PAGE / NUMPAGES / SECTIONPAGES fields inside header/footer text boxes evaluated per page. Editing a header or footer whose direct content is nearly empty now shows a full-height edit band instead of a hairline.
+- 0a62c6d: Typing in a tracked table row no longer drops that row's tracked-change card, so the row insertion stays acceptable and rejectable.
+- e215962: Trailing tabs no longer start a new line, so a header authored as tabbed columns keeps its own height and stops pushing the body down the page. Header and footer shapes marked `behindDoc` now paint beneath the body text instead of over it.
+- 434454d: Paint form-blank underlines across tab advances: an underlined `w:tab` now draws a rule for the reserved stop width instead of relying on CSS text-decoration on an invisible tab glyph.
+- Updated dependencies [232728c]
+  - @docx-editor.dev/i18n@2.1.0
+
+## 2.0.1
+
+### Patch Changes
+
+- 51f14f5: Add the `repository` field to the core package manifest so npm can verify its provenance statement on publish.
+  - @docx-editor.dev/i18n@2.0.1
+
+## 2.0.0
 
 ### Major Changes
 
-- 6272b32: # 1.0.0
+- 26095c6: Initial release.
 
-  First multi-package, multi-framework release. The monolithic `@eigenpal/docx-js-editor` is split into a framework-agnostic core and per-framework adapters, Vue 3 ships as a first-class adapter alongside React, and the license moves to Apache 2.0 across all packages.
+  A WYSIWYG `.docx` editor that runs entirely in the browser: it opens a Word file, paints
+  the real paginated layout, edits it in place, and writes a `.docx` back out.
+  - `@docx-editor.dev/react` — the React adapter. `<DocxEditor document={bytes} />` for the
+    packaged editor, or compose `DocxEditor.Root` / `.Viewport` / `.Content` with the hooks
+    (`useEditorState`, `useEditorCommand`, `useDocxEditor`) to build your own chrome.
+  - `@docx-editor.dev/core` — the framework-agnostic engine: OPC/XML reading, the canonical
+    OOXML tree, layout, paint, and the `Editor` contract the adapters render.
+  - `@docx-editor.dev/i18n` — the shared string catalogue, with nine locales.
+  - `@docx-editor.dev/editor-api` — a batching document object model for automating a
+    document from a server or from an editor already open in a page.
+  - `@docx-editor.dev/pro` — tracked changes, comments, and custom nodes.
 
-  ## Package restructure (breaking)
+  Word fidelity is structural: styles, theme colours, tables, headers and footers, section
+  layout, numbering, and tab stops resolve through the same cascade Word uses, and content
+  the editor does not model round-trips untouched.
 
-  | Old import                                 | New import                                |
-  | ------------------------------------------ | ----------------------------------------- |
-  | `@eigenpal/docx-js-editor`                 | `@eigenpal/docx-editor-react`             |
-  | `@eigenpal/docx-js-editor/react`           | `@eigenpal/docx-editor-react`             |
-  | `@eigenpal/docx-editor-react/core`         | `@eigenpal/docx-editor-core`              |
-  | `@eigenpal/docx-editor-react/headless`     | `@eigenpal/docx-editor-core/headless`     |
-  | `@eigenpal/docx-editor-react/core-plugins` | `@eigenpal/docx-editor-core/core-plugins` |
-  | `@eigenpal/docx-editor-react/mcp`          | `@eigenpal/docx-editor-agents/mcp`        |
-  | `@eigenpal/docx-editor-react/i18n/*.json`  | `@eigenpal/docx-editor-i18n/*.json`       |
+- 26095c6: `setSelection` now types the forms it actually accepts. `EditorSelection` gained the
+  `{ anchor, head }` paragraph-id pair the engine honours, and lost the `SemanticTarget` and
+  `DocLocation` arms it never accepted, so the outline and any other caller can move the caret
+  without a cast.
 
-  The old `@eigenpal/docx-js-editor` package stays on 0.x for legacy maintenance — no 1.x compatibility shim ships. Framework-agnostic utilities (e.g. `createEmptyDocument`) move to core:
+  Breaking if you passed a `SemanticTarget` or a `DocLocation`-ended range to `setSelection`:
+  both were refused at runtime with `unsupported`, so working code is unaffected.
 
-  ```diff
-  - import { DocxEditor, createEmptyDocument } from '@eigenpal/docx-js-editor';
-  + import { DocxEditor } from '@eigenpal/docx-editor-react';
-  + import { createEmptyDocument } from '@eigenpal/docx-editor-core';
-  ```
-
-  ## Vue 3 adapter (`@eigenpal/docx-editor-vue`)
-
-  The Vue package becomes a real adapter (previously a stub). Public API mirrors React:
-  - `<DocxEditor>` with matching prop surface
-  - `useDocxEditor` composable + `renderAsync` for the Node.js path
-  - `/ui`, `/composables`, `/dialogs`, `/plugin-api`, `/styles` subpaths
-
-  Parity gates cover insert-table, find/replace, page-setup, context menus, image overlay (resize/move/rotate/aspect-locked corners, dimension tooltip), advanced cell/row options (margins, height rule, text direction, no-wrap), menu-bar icons + shortcuts + carets, toolbar pickers, and the agent UI surface.
-
-  ## Shared i18n package (`@eigenpal/docx-editor-i18n`)
-
-  Locale strings move out of `@eigenpal/docx-editor-react` into a dedicated package consumed by both adapters from a single source.
-
-  ```diff
-  - import de from '@eigenpal/docx-editor-react/i18n/de.json';
-  + import de from '@eigenpal/docx-editor-i18n/de.json';
-  ```
-
-  The `defaultLocale` value (English) is still re-exported from the adapter packages, unchanged.
-
-  ## Agent UI relocation (breaking)
-
-  `AgentPanel`, `AgentChatLog`, `AgentComposer`, `AgentSuggestionChip`, `AgentTimeline` no longer ship from `@eigenpal/docx-editor-react`. They live at:
-  - `@eigenpal/docx-editor-agents/react` — React components + `useAgentChat`
-  - `@eigenpal/docx-editor-agents/vue` — Vue 3 twins, plus `AIContextMenu` and `AIResponsePreview`
-  - `@eigenpal/docx-editor-agents/ai-sdk/react` / `/ai-sdk/vue` — `@ai-sdk/*` adapters
-  - `@eigenpal/docx-editor-agents/bridge` — React-free `createEditorBridge`, `agentTools`, `executeToolCall`, `getToolSchemas`, `createReviewerBridge`. Safe for headless / Vue / Node.
-
-  ```diff
-  - import { AgentPanel, AgentChatLog } from '@eigenpal/docx-editor-react';
-  + import { AgentPanel, AgentChatLog } from '@eigenpal/docx-editor-agents/react';
-  ```
-
-  The agent components no longer call `useTranslation` directly — pass localized `*Label` props instead. `<DocxEditor>`'s built-in agent panel slot still forwards localized strings automatically.
-
-  Accessibility polish on the agent surface: keyboard-operable resize handle, Escape-dismissable context menu, live-region chat log, WCAG AA contrast on response previews.
-
-  ## Toolbar naming unified (breaking)
-
-  The standalone formatting bar is `Toolbar` on both adapters. The old "classic" single-row `Toolbar` (with File/Format/Insert menus baked in) is removed — compose `EditorToolbar.MenuBar` + `EditorToolbar.Toolbar` for that layout.
-
-  | Old (React)                    | New (React + Vue)       |
-  | ------------------------------ | ----------------------- |
-  | `FormattingBar`                | `Toolbar`               |
-  | Classic `Toolbar` (with menus) | `EditorToolbar`         |
-  | `EditorToolbar.FormattingBar`  | `EditorToolbar.Toolbar` |
-
-  Vue: `BasicToolbar` / `FormattingBar` aliases removed; `EditorToolbar`'s `formatting-bar` slot is now `toolbar`. Vue's table border-color and cell-fill pickers now use the advanced color picker matching React. Vue `MenuDropdown`'s `showChevron` default flips from `true` to `false` — pass `:show-chevron="true"` explicitly to keep the caret.
-
-  ## `showPrintButton` prop removed (breaking)
-
-  Removed from `<DocxEditor>` and `<Toolbar>` on both adapters; the Vue `<Toolbar>` `print` event is gone with it. `onPrint` callback stays.
-
-  ```diff
-  - <DocxEditor showPrintButton onPrint={handlePrint} />
-  + <DocxEditor onPrint={handlePrint} />
-  ```
-
-  To hide File > Print, omit `onPrint`. Programmatic print still works via `ref.current.print()` / `editorRef.value.print()`.
-
-  ## License moves to Apache 2.0
-
-  All published packages relicense to Apache 2.0. Notably: `@eigenpal/docx-editor-agents` was AGPL-3.0-or-later — the relicense lifts copyleft obligations on agent embedders.
+- 26095c6: Remove `EditorHost`, `EditorConfig` and `createEditor` from the public surface. They described a retired pipeline in which the adapter supplied DOM handles and a display sink; the editor has painted its own surface since `createDocxEditor` replaced it, and none of the three had a caller. Use `createDocxEditor` with `DocxEditorConfig`.
 
 ### Minor Changes
 
-- 76093f9: `@eigenpal/docx-editor-core` now ships an API Extractor snapshot for every published subpath (61 entries) under `packages/core/etc/`. CI fails on any undocumented drift to the public surface via `bun run api:check`. Adds rich TSDoc on the 21 most-imported types — `Document`, `DocumentBody`, `Paragraph`, `Run`, `Table`, `TableRow`, `TableCell`, `Image`, `Hyperlink`, `Comment`, `ColorValue`, `BorderSpec`, `ShadingProperties`, `TextFormatting`, `ParagraphFormatting`, `Style`, `Section`, `SectionProperties`, `ListLevel`, `ListRendering`, `AbstractNumbering`, `NumberingDefinitions` — each linked to its ECMA-376 reference.
+- 26095c6: Put the caret in the right place on an empty paragraph. A centred or right-aligned one drew it at the left margin, and one with a first-line indent ignored the indent; in both cases it only jumped to the correct position once a character was typed. Lines now publish their aligned content origin as `LineRecord.contentX`.
+- 26095c6: The root entry and the `contracts/*` entries now export the types their own signatures hand
+  out — `CanResult` from `can()`, `TextMatch` from `findText()`, `TableContext` from `query()`
+  and around 60 more that were previously unnameable from the entry point that returns them.
+  The root re-exports the whole `Editor` contract rather than a hand-listed subset, so it cannot
+  drift from it again.
 
-  No runtime change; doc-only.
+  Removes `@docx-editor.dev/core/contracts/plugin` and `@docx-editor.dev/core/contracts/mcp`.
+  Every function in them threw, and `coreTools` had no runtime binding at all. Extensions and
+  MCP are deferred to a separately specified contract; `EditorModule` is the supported seam.
 
 ### Patch Changes
 
-- c5125ff: Annotate every subpath barrel with `@packageDocumentation` + `@public` so API Extractor can extract them in the next phase. The exports map is unchanged; the published surface is unchanged. Doc-only.
-- 348fa6b: Tag three subpath helpers as `@internal` in TSDoc: `managers/TableSelectionManager`, `prosemirror/utils/extractTrackedChanges`, `prosemirror/utils/visualLineNavigation`. The subpaths stay in `package.json` `exports` for back-compat (shipped in v1.0), but the snapshots in `etc/managers-TableSelectionManager.api.md`, `etc/prosemirror-utils-extractTrackedChanges.api.md`, and `etc/prosemirror-utils-visualLineNavigation.api.md` now mark every export `// @internal`.
-
-  Consumers should reach for the adapter-side wrappers (`useTableSelection`, `useTrackedChanges`, `useVisualLineNavigation` in React/Vue) instead of these subpaths. The tag is a signal of intent — these subpaths are expected to move behind public surfaces in a future major.
-
-- 0187af2: Emit consumer-friendly JSON docs at `docs/json/<pkg-slug>/<subpath>.json` for every `@public` export across the published packages. Companion to the existing `etc/<slug>.api.md` snapshots — same source of truth (API Extractor), different output shape: instead of human-readable Markdown, the JSON is structured for a docs site to render any layout it wants. Includes per-export source-link URLs into the GitHub source tree, type-reference canonical IDs for cross-page linking, and TSDoc summaries/remarks/examples parsed out of the source.
-
-  New tooling: `bun run docs:json` regenerates, `bun run docs:check` (in CI) fails on drift. Contract documented in `CLAUDE.md` under `### Docs JSON`. No runtime change to any published package.
-
-- 61983ca: Add `@packageDocumentation` blocks to every public subpath across the published packages, and a small post-build step (`scripts/inject-package-doc.mjs`) that re-prepends the source's head doc-block to the dist `.d.ts` after tsup runs. tsup's rollup-plugin-dts hoists transitive type imports above the file-head comment, which previously stripped the description from the published types. Consumers now see the package-level prose in their IDE hover and the API Extractor snapshots no longer flag "No @packageDocumentation comment for this package".
-- b2230a3: Internal refactor: TableExtension closure split into per-domain modules under `prosemirror/extensions/nodes/TableExtension/commands/` (insert, delete, selection, borders, cellFormatting, sizing, tableStyle, helpers, activeCellPlugin). Schema-binding commands become `make*(schema)` factories called once per editor; schema-free commands become module-level `Command` constants. No public API change.
-- 8836214: Stop shipping sourcemaps and declaration maps in published tarballs. They were dead weight: the `.js.map` files referenced source files that aren't in the tarball, and the `.d.ts.map` files pointed at `.ts` files consumers can't see either.
-
-  Concrete changes:
-  - `@eigenpal/docx-editor-core`: drop `sourcemap: !isProd` from both tsup builds (the build never ran with `NODE_ENV=production`, so 245 `.js.map` files / ~8.2 MB were shipping). Tarball: 2.5 MB → 0.7 MB. Unpacked: 11.0 MB → 2.7 MB.
-  - `@eigenpal/docx-editor-vue`: pass `compilerOptions: { declarationMap: false }` to `vite-plugin-dts` to suppress the 63 `.d.ts.map` files.
-  - `@eigenpal/docx-editor-agents`: same `declarationMap: false` for the Vue sub-build; also add the missing `sideEffects: ["*.css"]` so bundlers can tree-shake.
-
-  Total unpacked footprint across all published packages: 14.8 MB → 6.3 MB.
+- Updated dependencies [26095c6]
+  - @docx-editor.dev/i18n@2.0.0

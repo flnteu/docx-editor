@@ -1,21 +1,17 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { CSSProperties } from 'react';
-import type {
-  ColorValue,
-  Theme,
-  ThemeColorScheme,
-} from '@eigenpal/docx-editor-core/types/document';
+import type { ColorValue, Theme, ThemeColorScheme } from '@docx-editor.dev/core/contracts/editor';
 import {
   generateThemeTintShadeMatrix,
   resolveColor,
   resolveColorToHex,
   resolveHighlightColor,
-} from '@eigenpal/docx-editor-core/utils';
-import type { ThemeMatrixCell } from '@eigenpal/docx-editor-core/utils';
+} from '../../lib/colorResolver';
+import type { ThemeMatrixCell } from '../../lib/colorResolver';
 import { useFixedDropdown } from '../../hooks/useFixedDropdown';
 import { MaterialSymbol } from './MaterialSymbol';
 import { useTranslation } from '../../i18n';
-import type { TranslationKey } from '@eigenpal/docx-editor-i18n';
+import type { TranslationKey } from '../../i18n';
 
 // ============================================================================
 // TYPES
@@ -96,23 +92,23 @@ const S_BUTTON: CSSProperties = {
 
 const S_DROPDOWN: CSSProperties = {
   padding: '10px',
-  backgroundColor: '#fff',
-  border: '1px solid #d0d0d0',
+  backgroundColor: 'var(--doc-surface)',
+  border: '1px solid var(--doc-border-dark)',
   borderRadius: '6px',
-  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+  boxShadow: '0 4px 16px var(--doc-shadow)',
   width: 'auto',
 };
 
 const S_SECTION_LABEL: CSSProperties = {
   fontSize: '11px',
-  color: '#666',
+  color: 'var(--doc-text-muted)',
   marginBottom: '4px',
   fontWeight: 500,
 };
 
 const S_DIVIDER: CSSProperties = {
   height: '1px',
-  backgroundColor: '#e0e0e0',
+  backgroundColor: 'var(--doc-border)',
   margin: '8px 0',
 };
 
@@ -124,7 +120,7 @@ const S_GRID: CSSProperties = {
 const S_CELL: CSSProperties = {
   width: `${CELL_SIZE}px`,
   height: `${CELL_SIZE}px`,
-  border: '1px solid #c0c0c0',
+  border: '1px solid var(--doc-border-input)',
   borderRadius: '2px',
   cursor: 'pointer',
   padding: 0,
@@ -134,15 +130,15 @@ const S_CELL: CSSProperties = {
 const S_CELL_HOVER: CSSProperties = {
   ...S_CELL,
   transform: 'scale(1.15)',
-  borderColor: '#333',
+  borderColor: 'var(--doc-text)',
   zIndex: 1,
 };
 
 const S_CELL_SELECTED: CSSProperties = {
   ...S_CELL,
   borderWidth: '2px',
-  borderColor: '#0066cc',
-  boxShadow: '0 0 0 1px #0066cc',
+  borderColor: 'var(--doc-primary)',
+  boxShadow: '0 0 0 1px var(--doc-primary)',
 };
 
 const S_AUTO_BUTTON: CSSProperties = {
@@ -151,12 +147,12 @@ const S_AUTO_BUTTON: CSSProperties = {
   gap: '8px',
   width: '100%',
   padding: '5px 8px',
-  border: '1px solid #d0d0d0',
+  border: '1px solid var(--doc-border-dark)',
   borderRadius: '4px',
-  backgroundColor: '#fff',
+  backgroundColor: 'var(--doc-surface)',
   cursor: 'pointer',
   fontSize: '12px',
-  color: '#333',
+  color: 'var(--doc-text)',
 };
 
 const S_CUSTOM_ROW: CSSProperties = {
@@ -169,7 +165,7 @@ const S_HEX_INPUT: CSSProperties = {
   width: '70px',
   height: '24px',
   padding: '2px 6px',
-  border: '1px solid #ccc',
+  border: '1px solid var(--doc-border-input)',
   borderRadius: '3px',
   fontSize: '12px',
 };
@@ -177,9 +173,9 @@ const S_HEX_INPUT: CSSProperties = {
 const S_APPLY_BTN: CSSProperties = {
   height: '24px',
   padding: '0 10px',
-  border: '1px solid #ccc',
+  border: '1px solid var(--doc-border-input)',
   borderRadius: '3px',
-  backgroundColor: '#f5f5f5',
+  backgroundColor: 'var(--doc-bg-subtle)',
   fontSize: '12px',
   cursor: 'pointer',
 };
@@ -398,7 +394,11 @@ export function ColorPicker({
   const [pickedColor, setPickedColor] = useState<ColorValue | string>(
     () =>
       defaultColor ??
-      (mode === 'highlight' ? 'FFFF00' : mode === 'border' ? { rgb: '000000' } : { rgb: 'FF0000' })
+      (mode === 'highlight'
+        ? 'FFFF00'
+        : mode === 'border'
+          ? { kind: 'hex', value: '000000' }
+          : { kind: 'hex', value: 'FF0000' })
   );
   const { t } = useTranslation();
 
@@ -447,13 +447,12 @@ export function ColorPicker({
       if (mode === 'highlight') {
         picked = cell.hex;
       } else {
-        const colorValue: ColorValue = {
-          themeColor: cell.themeSlot,
-          rgb: cell.hex,
+        picked = {
+          kind: 'theme',
+          slot: cell.themeSlot,
+          ...(cell.tint !== undefined ? { tint: cell.tint } : {}),
+          ...(cell.shade !== undefined ? { shade: cell.shade } : {}),
         };
-        if (cell.tint) colorValue.themeTint = cell.tint;
-        if (cell.shade) colorValue.themeShade = cell.shade;
-        picked = colorValue;
       }
       setPickedColor(picked);
       onChange?.(picked);
@@ -464,7 +463,7 @@ export function ColorPicker({
 
   const handleStandardColorSelect = useCallback(
     (hex: string) => {
-      const picked: ColorValue | string = mode === 'highlight' ? hex : { rgb: hex };
+      const picked: ColorValue | string = mode === 'highlight' ? hex : { kind: 'hex', value: hex };
       setPickedColor(picked);
       onChange?.(picked);
       setIsOpen(false);
@@ -478,7 +477,7 @@ export function ColorPicker({
     if (mode === 'highlight') {
       onChange?.('none');
     } else {
-      onChange?.({ auto: true });
+      onChange?.({ kind: 'auto' });
     }
     setIsOpen(false);
   }, [mode, onChange]);
@@ -486,7 +485,7 @@ export function ColorPicker({
   const handleCustomApply = useCallback(() => {
     const hex = customHex.replace(/^#/, '').toUpperCase();
     if (/^[0-9A-F]{6}$/i.test(hex)) {
-      const picked: ColorValue | string = mode === 'highlight' ? hex : { rgb: hex };
+      const picked: ColorValue | string = mode === 'highlight' ? hex : { kind: 'hex', value: hex };
       setPickedColor(picked);
       onChange?.(picked);
       setIsOpen(false);
@@ -711,7 +710,7 @@ export function ColorPicker({
             <div style={S_DIVIDER} />
             <div style={S_SECTION_LABEL}>{t('colorPicker.customColor')}</div>
             <div style={S_CUSTOM_ROW}>
-              <span style={{ fontSize: '12px', color: '#666' }}>#</span>
+              <span style={{ fontSize: '12px', color: 'var(--doc-text-muted)' }}>#</span>
               <input
                 type="text"
                 style={S_HEX_INPUT}

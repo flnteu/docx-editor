@@ -2,7 +2,7 @@
 
 Today the docx-editor has two rendering models running simultaneously:
 
-- **Body**: hidden ProseMirror EditorView at `left: -9999px` (`packages/react/src/components/DocxEditor/HiddenProseMirror.tsx`) plus a visible painter (`packages/core/src/layout-painter/renderPage.ts`). Click on the painter → `clickToPositionDom` → PM `setSelection` → painter re-renders. One renderer, true WYSIWYG.
+- **Body**: hidden ProseMirror EditorView at `left: -9999px` (`packages/react/src/components/DocxEditor/OffscreenEditorHost.tsx`) plus a visible painter (`packages/core/src/painter-model/paintPage.ts`). Click on the painter → `resolveDomPosition` → PM `setSelection` → painter re-renders. One renderer, true WYSIWYG.
 - **Headers/footers**: same painter for normal display, but on double-click `InlineHeaderFooterEditor.tsx` (~513 lines) mounts a **second visible PM EditorView** on top of the painter. CSS hides the painted HF region during edit; PM's native `toDOM` tables become the visible layer. The two pipelines disagree about column widths, vertical alignment, line-box height, and row distribution — issue #468 already took three CSS patches to bring them visually closer.
 
 Two reviewer agents (code architect + OOXML specialist) independently concluded the architectural fix is to put HF editing on the body's hidden-PM + visible-painter model. The OOXML reviewer specifically warned against the "make the painter editable, no PM" alternative (would force us to re-invent selection / IME / undo / a11y in the painter — neither Word nor LibreOffice nor Google Docs took that path).
@@ -15,8 +15,8 @@ This design proposes the concrete shape of that unification. It is intentionally
 
 - One visible renderer for header/footer content in both edit and display modes (the painter).
 - Hidden PM EditorView per HF slot, mounted persistently, focused on click-into-HF — same model the body uses today.
-- Click routing: clicks inside `.layout-page-header` / `.layout-page-footer` translate to PM positions on the matching HF PM via slot-scoped `clickToPositionDom`.
-- Selection overlay: carets and selection rects render against the focused HF PM's state inside painted HF DOM, using existing `data-pm-start` / `data-pm-end` markers.
+- Click routing: clicks inside `.layout-page-header` / `.layout-page-footer` translate to PM positions on the matching HF PM via slot-scoped `resolveDomPosition`.
+- Selection overlay: carets and selection rects render against the focused HF PM's state inside painted HF DOM, using existing `data-doc-from` / `data-doc-to` markers.
 - Deletion of `.hf-editor-pm` CSS patches (the #468 strut suppression, column-width hacks, vAlign mapping) by construction — they no longer have a job once both modes use the painter.
 - React + Vue architectural parity per CLAUDE.md's parity rule.
 - Each phase is independently mergeable to the long-lived feature branch with green tests; rollback at any phase boundary returns to a working state.
@@ -59,19 +59,19 @@ When a new HF part is materialized at runtime (e.g., the user toggles `titlePg` 
 
 **Rationale:** Body's model is proven. Painter handles per-page reflow (page numbers, `titlePg` swap) by re-running `renderHeaderFooterContent` per page; that doesn't change.
 
-### 3. Click routing via slot-scoped `clickToPositionDom`
+### 3. Click routing via slot-scoped `resolveDomPosition`
 
-**Chosen:** Extend `usePagesPointer.handlePagesMouseDown` to detect the clicked HF region (header/footer + page + section) and call a slot-scoped variant of `clickToPositionDom` that queries only that slot's painted DOM. Resolves to a PM position in the matching HF PM. Sets focus on that PM via `view.focus()`.
+**Chosen:** Extend `usePagesPointer.handlePagesMouseDown` to detect the clicked HF region (header/footer + page + section) and call a slot-scoped variant of `resolveDomPosition` that queries only that slot's painted DOM. Resolves to a PM position in the matching HF PM. Sets focus on that PM via `view.focus()`.
 
 **Alternatives considered:**
 
-- **Single global `clickToPositionDom` with a multi-PM lookup.** Cleaner caller, but the hit-test query mixes body and HF DOM ranges. The scoped variant matches the existing pattern: `findBodyPmSpans` already scopes to `.layout-page-content` (`packages/core/src/layout-bridge/findBodyPmSpans.ts:13-15` — the comment literally says HF callers "should write their own queries scoped to those classes").
+- **Single global `resolveDomPosition` with a multi-PM lookup.** Cleaner caller, but the hit-test query mixes body and HF DOM ranges. The scoped variant matches the existing pattern: `collectBodySpans` already scopes to `.layout-page-content` (`packages/core/src/flow-model/collectBodySpans.ts:13-15` — the comment literally says HF callers "should write their own queries scoped to those classes").
 
-**Rationale:** Scoped queries are the existing pattern in `findBodyPmSpans`. The same convention applied to HF means no new architectural primitive — just a sibling helper `findHfPmSpans(slot)`.
+**Rationale:** Scoped queries are the existing pattern in `collectBodySpans`. The same convention applied to HF means no new architectural primitive — just a sibling helper `findHfPmSpans(slot)`.
 
 ### 4. Selection overlay extends with a per-PM overlay layer
 
-**Chosen:** `useSelectionOverlay` (or a parallel `useHfSelectionOverlay`) draws carets and selection rects against the focused HF PM's state inside painted HF DOM, using the painter's existing `data-pm-start` / `data-pm-end` markers. Only the focused PM draws an overlay at a time.
+**Chosen:** `useSelectionOverlay` (or a parallel `useHfSelectionOverlay`) draws carets and selection rects against the focused HF PM's state inside painted HF DOM, using the painter's existing `data-doc-from` / `data-doc-to` markers. Only the focused PM draws an overlay at a time.
 
 **Alternatives considered:**
 
@@ -100,9 +100,9 @@ When a new HF part is materialized at runtime (e.g., the user toggles `titlePg` 
 
 **Rationale:** This is one of the few pieces of plumbing that's already in place. No new design needed.
 
-### 7. Vue parity is mandatory, lifted into core where possible
+### 7. Vue parity is mandatory, centralized into core where possible
 
-**Chosen:** Land the React changes first to validate the model, then port to `packages/vue/src/composables/useDocxEditor.ts`. Where the new abstraction is platform-agnostic (e.g., `findHfPmSpans` helper, the projection sync logic), lift into `packages/core/`. The float-zone pipeline in `packages/core/src/layout-bridge/measuring/measureBlocksPipeline.ts` is the canonical example to mirror.
+**Chosen:** Land the React changes first to validate the model, then port to `packages/vue/src/composables/useDocxEditor.ts`. Where the new abstraction is platform-agnostic (e.g., `findHfPmSpans` helper, the projection sync logic), centralize into `packages/core/`. The float-zone pipeline in `packages/core/src/flow-model/metrics/measureBlocksPipeline.ts` is the canonical example to mirror.
 
 **Rationale:** CLAUDE.md's parity rule explicitly demands this. The parity contract gate (`bun run check:parity-contract`) will block merge to main until both adapters are aligned.
 

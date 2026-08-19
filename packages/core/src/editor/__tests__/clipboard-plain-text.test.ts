@@ -1,0 +1,257 @@
+// A clipboard payload that carries only `text/html`.
+//
+// The paste handler prevents the browser's default unconditionally, so returning early on
+// a missing `text/plain` flavour meant those payloads pasted NOTHING, with no error and no
+// fallback. The text is recovered instead — as text, never as structure.
+
+import { GlobalRegistrator } from '@happy-dom/global-registrator';
+if (!GlobalRegistrator.isRegistered) GlobalRegistrator.register();
+
+import { describe, expect, test } from 'bun:test';
+import {
+  insertableText,
+  plainTextFromHtml,
+  plainTextFromTransfer,
+} from '../clipboard-plain-text.ts';
+import { isValidXmlText } from '../../store/package/sinks.ts';
+import { createClipboardHandlers } from '../surface-input.ts';
+import type { PaginatedSurface } from '../paginated-surface-contract.ts';
+
+/** A DataTransfer stand-in: happy-dom's does not carry arbitrary flavours reliably. */
+const transfer = (flavours: Record<string, string>): DataTransfer =>
+  ({ getData: (type: string) => flavours[type] ?? '' }) as unknown as DataTransfer;
+
+describe('the text behind a clipboard payload', () => {
+  test('text/plain wins whenever the payload carries it', () => {
+    const data = transfer({ 'text/plain': 'chosen', 'text/html': '<p>ignored</p>' });
+    expect(plainTextFromTransfer(data)).toBe('chosen');
+  });
+
+  test('an HTML-only payload pastes its text instead of nothing at all', () => {
+    const data = transfer({ 'text/html': '<p>alpha</p>' });
+    expect(plainTextFromTransfer(data)).toBe('alpha');
+  });
+
+  test('a payload with neither flavour is still empty', () => {
+    expect(plainTextFromTransfer(transfer({}))).toBe('');
+    expect(plainTextFromTransfer(null)).toBe('');
+  });
+});
+
+describe('the paste handler', () => {
+  const paste = (flavours: Record<string, string>) => {
+    const inserted: string[] = [];
+    let prevented = false;
+    const handlers = createClipboardHandlers({} as PaginatedSurface, (text) => inserted.push(text));
+    handlers.onPaste({
+      clipboardData: transfer(flavours),
+      preventDefault: () => {
+        prevented = true;
+      },
+    } as unknown as ClipboardEvent);
+    return { inserted, prevented };
+  };
+
+  test('an HTML-only payload reaches the document', () => {
+    const { inserted } = paste({ 'text/html': '<p>alpha</p><p>beta</p>' });
+    // Newlines, so the insert splits into real paragraphs rather than one run.
+    expect(inserted).toEqual(['alpha\nbeta']);
+  });
+
+  test('the browser default is prevented either way, including on an empty payload', () => {
+    expect(paste({ 'text/html': '<p>alpha</p>' }).prevented).toBe(true);
+    const empty = paste({});
+    expect(empty.prevented).toBe(true);
+    expect(empty.inserted).toEqual([]);
+  });
+
+  test('a payload with both flavours still inserts the plain one verbatim', () => {
+    const { inserted } = paste({
+      'text/plain': '  spaced  text  ',
+      'text/html': '<p>collapsed</p>',
+    });
+    expect(inserted).toEqual(['  spaced  text  ']);
+  });
+});
+
+describe('making pasted text insertable', () => {
+  // Run text is serialized to XML and the store validates it, so ONE illegal character
+  // rejects the op — and one rejected op vetoes the transaction, which is why a paste
+  // carrying a page break used to do nothing at all rather than partially land.
+
+  test('a page break becomes a paragraph break instead of killing the paste', () => {
+    expect(insertableText('alpha\fbeta')).toBe('alpha\nbeta');
+  });
+
+  test('the engine can paste back what it copied across a page break', () => {
+    // `selectedText()` writes U+000C for a page break, so Select All + Copy + Paste fed
+    // this exact shape straight back in and the whole paste was refused.
+    const copied = 'page one\n\fpage two';
+    const insertable = insertableText(copied);
+    expect(isValidXmlText(insertable)).toBe(true);
+    expect(insertable.split('\n')).toEqual(['page one', '', 'page two']);
+  });
+
+  test('CRLF and a lone CR still collapse to one paragraph break', () => {
+    expect(insertableText('a\r\nb\rc')).toBe('a\nb\nc');
+  });
+
+  test('tab, newline and ordinary text survive untouched', () => {
+    expect(insertableText('a\tb\nc')).toBe('a\tb\nc');
+  });
+
+  test('every other control character is dropped rather than refused', () => {
+    expect(insertableText('a\u0001b\u0000c\u001fd')).toBe('abcd');
+    expect(insertableText('a\ufffeb\uffffc')).toBe('abc');
+  });
+
+  test('a valid surrogate pair survives and a lone surrogate is dropped', () => {
+    expect(insertableText('a\u{1F600}b')).toBe('a\u{1F600}b');
+    expect(insertableText('a\ud800b')).toBe('ab');
+    expect(insertableText('a\udc00b')).toBe('ab');
+    expect(insertableText('a\ud800')).toBe('a');
+  });
+
+  test('whatever it returns is always something the store will accept', () => {
+    const hostile = 'x\f\u0001\ud800y\uffff\u{1F600}\r\n\tz\udfff';
+    expect(isValidXmlText(insertableText(hostile))).toBe(true);
+    // …and the guard is meaningful: the raw payload is refused.
+    expect(isValidXmlText(hostile)).toBe(false);
+  });
+});
+
+describe('the visible text of an HTML fragment', () => {
+  test('block boundaries become newlines, so paste splits paragraphs', () => {
+    expect(plainTextFromHtml('<p>one</p><p>two</p>')).toBe('one\ntwo');
+    expect(plainTextFromHtml('alpha<br>beta')).toBe('alpha\nbeta');
+  });
+
+  test('table cells become tabs and rows newlines, like a copied cell range', () => {
+    const html = '<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>';
+    expect(plainTextFromHtml(html)).toBe('a\tb\nc\td');
+  });
+
+  test('script and style CONTENT never becomes pasted text', () => {
+    const html = '<div>before<script>alert(1)</script><style>p{color:red}</style>after</div>';
+    const text = plainTextFromHtml(html);
+    expect(text).not.toContain('alert');
+    expect(text).not.toContain('color:red');
+    expect(text).toBe('beforeafter');
+  });
+
+  test('an unclosed script tag does not leak its body either', () => {
+    expect(plainTextFromHtml('<div>keep<script>alert(1)')).toBe('keep');
+  });
+
+  test('comments are dropped, including tag-shaped text inside them', () => {
+    expect(plainTextFromHtml('a<!-- <p>hidden</p> -->b')).toBe('ab');
+  });
+
+  test('entities decode only AFTER tags are gone, so markup cannot reassemble', () => {
+    // The payload names a tag through entities. Decoding first would hand the tag
+    // stripper live markup; decoding last leaves it as the literal text it always was.
+    const text = plainTextFromHtml('<p>&lt;script&gt;alert(1)&lt;/script&gt;</p>');
+    expect(text).toBe('<script>alert(1)</script>');
+  });
+
+  test('numeric and named references decode, and nonsense ones stay literal', () => {
+    // `&nbsp;` stays a real U+00A0 rather than collapsing to a space.
+    expect(plainTextFromHtml('<p>a&amp;b&#65;c&#x42;d&nbsp;e</p>')).toBe('a&bAcBd\u00a0e');
+    expect(plainTextFromHtml('<p>&#x110000;</p>')).toBe('&#x110000;');
+    expect(plainTextFromHtml('<p>&notareal;</p>')).toBe('&notareal;');
+  });
+
+  test('a lone surrogate reference never throws', () => {
+    expect(() => plainTextFromHtml('<p>&#xD800;</p>')).not.toThrow();
+  });
+
+  test('a hostile oversized payload is bounded rather than dropped', () => {
+    const huge = `<p>${'x'.repeat(3_000_000)}</p>`;
+    const text = plainTextFromHtml(huge);
+    expect(text.length).toBeGreaterThan(0);
+    expect(text.length).toBeLessThanOrEqual(2_000_000);
+  });
+
+  test('no output ever carries an angle-bracketed tag through', () => {
+    const html = '<p onclick="evil()">text<img src=x onerror=alert(1)></p>';
+    expect(plainTextFromHtml(html)).toBe('text');
+  });
+
+  test('a bracket a browser shows as text is kept, even beside a removed element', () => {
+    // A `<` that opens no tag is text, so removing the element after it can leave that `<`
+    // next to a word — `<script>` here, where the tag-stripping reader gave `script>`. The
+    // output is only ever inserted as run text, so a bracket in it is a character, not
+    // markup; what matters is that the reader never RE-READS what it wrote.
+    expect(plainTextFromHtml('<<div>script>')).toBe('<script>');
+    expect(plainTextFromHtml('<<!---->script>')).toBe('<script>');
+    expect(plainTextFromHtml('<scr<div>ipt>alert(1)')).toBe('ipt>alert(1)');
+  });
+
+  test('a quoted attribute may hold a bracket without ending the tag', () => {
+    expect(plainTextFromHtml('<p title="a > b">text</p>')).toBe('text');
+    expect(plainTextFromHtml("<p data-x='a > b'>text</p>")).toBe('text');
+  });
+
+  test('an apostrophe in an unquoted attribute is a character, not a quote', () => {
+    // Only the quote directly after `=` opens a value. Reading this one as an opening quote
+    // sent the scan hunting for a partner to the end of the payload and pasted nothing.
+    expect(plainTextFromHtml("<p class=note title=it's>Para one</p><p>Second</p>")).toBe(
+      'Para one\nSecond'
+    );
+    expect(plainTextFromHtml("<div><img src=a.jpg alt=John's photo><p>Caption</p></div>")).toBe(
+      'Caption'
+    );
+  });
+
+  test('an unpaired bracket in prose stays prose', () => {
+    expect(plainTextFromHtml('<p>1 < 2 and 3 > 2</p>')).toBe('1 < 2 and 3 > 2');
+  });
+
+  test('a doctype is furniture, not text', () => {
+    expect(plainTextFromHtml('<!DOCTYPE html><p>alpha</p>')).toBe('alpha');
+  });
+
+  test('a comment that closes at once does not swallow the payload behind it', () => {
+    // `<!-->` and `<!--->` are complete comments. Demanding a full `-->` after them found no
+    // terminator and dropped everything that followed — the whole paste, for five characters.
+    expect(plainTextFromHtml('<!-->text')).toBe('text');
+    expect(plainTextFromHtml('<!--->text')).toBe('text');
+    expect(plainTextFromHtml('a<!--<!-- -->b')).toBe('ab');
+  });
+
+  test('raw text stays out of the document even when the elements overlap', () => {
+    expect(plainTextFromHtml('<style><script></style>alert(1)</script>')).toBe('alert(1)');
+    expect(plainTextFromHtml('<script>a<script>b</script>c</script>')).toBe('c');
+    expect(plainTextFromHtml('<SCRIPT>alert(1)</SCRIPT>keep')).toBe('keep');
+  });
+
+  test('an attribute does not stop a break or a cell from reading as one', () => {
+    expect(plainTextFromHtml('a<br class="x">b')).toBe('a\nb');
+    expect(plainTextFromHtml('<tr><td>a</td class=x><td>b</td></tr>')).toBe('a\tb');
+  });
+
+  test('truncation landing inside a tag does not paste the tag as text', () => {
+    const text = plainTextFromHtml(`${'x'.repeat(1_999_990)}<p class="y`);
+    expect(text.endsWith('x')).toBe(true);
+    expect(text).not.toContain('<p');
+  });
+
+  test('a payload built to make a reader backtrack still finishes at once', () => {
+    // Raw-text elements and bare brackets, repeated: each branch of the walk consumes what
+    // it reads, so the cost stays proportional to the length rather than squaring it.
+    const hostile = `${'<style>x</style>'.repeat(50_000)}${'< '.repeat(100_000)} text`;
+    const started = performance.now();
+    expect(plainTextFromHtml(hostile)).toContain('text');
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+
+  test('a solid run of cell tabs is answered at once too', () => {
+    // `</td>` emits exactly one tab, so a payload of nothing else is a tab run a sender
+    // controls. Trimming those with `/\t+\n/g` backtracked over every position of the run:
+    // 80,000 cells cost 2.7 seconds, and the input cap allows five times that many.
+    const hostile = `${'</td>'.repeat(80_000)}z`;
+    const started = performance.now();
+    expect(plainTextFromHtml(hostile)).toContain('z');
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});

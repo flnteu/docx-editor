@@ -1,0 +1,94 @@
+---
+title: 'Toolbar'
+description: 'Customize the React editor chrome: keep the packaged toolbar, override single slots, or compose your own from DocxEditor.Toolbar and its parts.'
+category: 'Guides'
+seoTitle: 'Toolbar customization'
+---
+
+The packaged React host has two levels of chrome: a title bar (`title`, `renderTitleBarLeft`, `renderTitleBarRight`, `menu`) and a formatting bar (`DocxEditor.Toolbar`). Both the packaged host and the lower-level compounds live on the React package root.
+
+<ToolbarLayoutDiagram />
+
+## Use the packaged chrome
+
+The fastest path is still `<DocxEditor />`:
+
+```tsx
+<DocxEditor document={bytes} title="Proposal.docx" renderTitleBarRight={() => <SaveIndicator />} />
+```
+
+Use these root props to steer the packaged frame:
+
+| Prop                                         | Type                                    | Description                                        |
+| -------------------------------------------- | --------------------------------------- | -------------------------------------------------- |
+| `title`                                      | `string`                                | Document name shown in the title bar.              |
+| `onTitleChange`                              | `(title: string) => void`               | Makes the title editable.                          |
+| `renderTitleBarLeft` / `renderTitleBarRight` | `() => ReactNode`                       | Host-owned title bar slots.                        |
+| `menu`                                       | `boolean \| DocxEditorMenuProps`        | Toggle or customize the packaged menu row.         |
+| `chrome`                                     | `boolean`                               | Set `false` to remove the packaged frame entirely. |
+| `navigation`                                 | `boolean`                               | Toggle the packaged navigation pane.               |
+| `hyperlinkPopup`                             | `boolean`                               | Toggle the packaged link popover.                  |
+| `contextMenu`                                | `boolean \| DocxEditorContextMenuProps` | Toggle or customize the packaged context menu.     |
+
+## Drop to the provider primitives
+
+When you want your own frame, use the same provider primitives the packaged host uses internally:
+
+```tsx
+import { DocxEditor } from '@docx-editor.dev/react';
+
+function MyChrome({ bytes }: { bytes: Uint8Array }) {
+  return (
+    <DocxEditor.Root document={bytes}>
+      <DocxEditor.Toolbar />
+      <DocxEditor.Viewport>
+        <DocxEditor.Navigation />
+        <DocxEditor.Content />
+        <DocxEditor.HyperLink />
+        <DocxEditor.ContextMenu />
+      </DocxEditor.Viewport>
+    </DocxEditor.Root>
+  );
+}
+```
+
+`DocxEditor.Root` owns the editor instance, `DocxEditor.Viewport` is the scroll container, and `DocxEditor.Content` is the painted page surface. The other compounds layer on top of that same provider.
+
+## Add root-level command buttons
+
+For small custom controls, reach the shared command hooks from the root package:
+
+```tsx
+import { useEditorCommand } from '@docx-editor.dev/react';
+
+function BoldButton() {
+  const bold = useEditorCommand('text.bold');
+  return (
+    <button
+      onMouseDown={(e) => e.preventDefault()} // chrome must not steal the caret
+      onClick={() => bold.execute()}
+      disabled={!bold.isEnabled}
+    >
+      Bold
+    </button>
+  );
+}
+```
+
+## Table editing (React)
+
+When the caret or a rectangular cell selection is inside a table, the formatting toolbar shows contextual table controls:
+
+- **Resize**: hover a column divider or the table's right edge; drag to commit Word-compatible twip widths (inner divider resize preserves total table width; outer-right resize changes table width).
+- **Insert rows/columns**: hover the row band or column header band and click the `+` control, or use the table rows on the right-click menu.
+- **Borders and fill**: with one or more cells selected, choose a border target, style, width, and color, then pick a cell fill (clear fill removes direct shading).
+
+These controls target the **innermost** nested table under the pointer or selection. Merge and split remain unsupported; tables with merged cells refuse column resize/insert/delete with an explicit disabled reason.
+
+The [Igloo demo](https://github.com/eigenpal/docx-editor/tree/main/examples/igloo) is a worked example of every point above: it hand-orders the bar, re-icons every packaged part, and adds two host actions.
+
+## Next steps
+
+- [React package overview](/docs/2.x/react)
+- [React props](/docs/2.x/react/props)
+- [React examples](/docs/2.x/react/examples)

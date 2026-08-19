@@ -26,7 +26,7 @@ Deferred:
 - [ ] 2.2 Each EditorView creates its own `ExtensionManager` instance (matches `InlineHeaderFooterEditor.tsx:217-222` pattern). Confirm history plugin is per-view and undo stacks stay independent.
 - [ ] 2.3 On every HF transaction, serialize `proseDocToBlocks(view.state.doc)` and write back to `Document.package.headers[rId].content` (or `.footers[rId].content`). Debounce to avoid thrashing the layout pipeline.
 - [ ] 2.4 In `useLayoutPipeline.ts`, replace the call to `convertHeaderFooterToContent(headerContent, …)` with a path that resolves the painted HF region to its `rId` (via the section's `headerReferences` / `footerReferences`), looks up the corresponding HF EditorView from the `useHeaderFooterPM` registry, and reads from `view.state.doc`. Fall back to `package.headers[rId].content` for `rId`s without a mounted PM (shouldn't happen post-2.1, but guard it).
-- [ ] 2.5 Refactor `convertHeaderFooterToContent` (in `packages/core/src/layout-bridge/headerFooterLayout.ts`) to accept either a `HeaderFooter` object or a `PMNode` directly — the existing first branch already calls `headerFooterToProseDoc`, so the change is to skip that step when given a PMNode.
+- [ ] 2.5 Refactor `convertHeaderFooterToContent` (in `packages/core/src/flow-model/headerFooterLayout.ts`) to accept either a `HeaderFooter` object or a `PMNode` directly — the existing first branch already calls `headerFooterToProseDoc`, so the change is to skip that step when given a PMNode.
 - [ ] 2.6 Keep the inline overlay's existing PM EditorView (the user-visible one) in place for now. UX is unchanged at this phase.
 - [ ] 2.7 Verify: existing HF playwright specs all pass; the new screenshot-diff spec from 1.2 still fails (overlay still visible during edit) but no regression in coverage.
 - [ ] 2.8 Land phase-1 PR to feature branch with `bun run typecheck`, `bun test packages/core/src`, and the existing HF playwright suite green.
@@ -42,9 +42,9 @@ Deferred:
 
 ## 4. Phase 3 — Click routing to HF PM
 
-- [ ] 4.1 Add `packages/core/src/layout-bridge/findHfPmSpans.ts` mirroring `findBodyPmSpans.ts`, scoped to `.layout-page-header` / `.layout-page-footer` regions. Function takes an `rId` and returns the matching PM range info within the painted region for that `rId`.
+- [ ] 4.1 Add `packages/core/src/flow-model/findHfPmSpans.ts` mirroring `collectBodySpans.ts`, scoped to `.layout-page-header` / `.layout-page-footer` regions. Function takes an `rId` and returns the matching PM range info within the painted region for that `rId`.
 - [ ] 4.2 In `usePagesPointer.handlePagesMouseDown`, detect when the click target is inside `.layout-page-header` or `.layout-page-footer`. Resolve the painted region to its `rId` via the section's `headerReferences` / `footerReferences` and the current page's `hdrFtrType` resolution (`default` / `first` / `even` per §17.10.7 `titlePg` and §17.15.1.45 `evenAndOddHeaders`). Look up the corresponding HF EditorView from the `useHeaderFooterPM` registry.
-- [ ] 4.3 Call slot-scoped `clickToPositionDom` against the clicked DOM to resolve a PM position inside the HF EditorView's document.
+- [ ] 4.3 Call slot-scoped `resolveDomPosition` against the clicked DOM to resolve a PM position inside the HF EditorView's document.
 - [ ] 4.4 Dispatch `setSelection(TextSelection.create(view.state.doc, pos))` to the HF EditorView. Call `view.focus()`. Body EditorView loses focus naturally.
 - [ ] 4.5 Hover affordance: When the user is editing the body and hovers over `.layout-page-header`, the existing cursor pointer style and "double-click to edit header" tooltip should still work. Verify the current implementation in `packages/core/src/prosemirror/editor.css:768` still triggers.
 - [ ] 4.6 Verify: clicking inside the painted header places caret correctly (visible once phase 4 ships); clicking body while editing HF returns focus to body; double-click still works as the entry affordance (or single click — see open question in design.md).
@@ -54,7 +54,7 @@ Deferred:
 
 - [ ] 5.1 Read `useSelectionOverlay` and decide: extend in place or fork into a parallel `useHfSelectionOverlay` (open question per design.md — pick based on diff size).
 - [ ] 5.2 Implement overlay drawing for the focused HF EditorView's selection: caret position, blue selection rects, all rendered inside the painted `.layout-page-header` / `.layout-page-footer` region.
-- [ ] 5.3 Map PM positions to DOM rects using the painter's existing `data-pm-start` / `data-pm-end` markers (same approach as body overlay).
+- [ ] 5.3 Map PM positions to DOM rects using the painter's existing `data-doc-from` / `data-doc-to` markers (same approach as body overlay).
 - [ ] 5.4 Coordinate overlay lifecycle with focus: only the focused EditorView's selection is drawn; on focus change, the previous overlay clears and the new editor's overlay activates.
 - [ ] 5.5 Verify: caret visible in painted HF when focused, range selection across cells highlights both selected ranges, blur removes the overlay.
 - [ ] 5.6 IME / composition: test typing accented characters in a header cell. Verify composition events route correctly to the HF PM and the overlay updates after composition end.
@@ -72,7 +72,7 @@ Deferred:
 ## 7. Phase 6 — Vue adapter parity
 
 - [ ] 7.1 Mirror the `useHeaderFooterPM` hook into `packages/vue/src/composables/useDocxEditor.ts` (as a Vue composable using `ref`/`onMounted` semantics).
-- [ ] 7.2 Lift platform-agnostic pieces (`findHfPmSpans`, the projection sync logic) into `packages/core/` per CLAUDE.md's parity rule (the float-zone pipeline is the canonical example to copy).
+- [ ] 7.2 Centralize platform-agnostic pieces (`findHfPmSpans`, the projection sync logic) into `packages/core/` per CLAUDE.md's parity rule (the float-zone pipeline is the canonical example to copy).
 - [ ] 7.3 Apply phases 1–5 equivalent changes to the Vue example/composable.
 - [ ] 7.4 Run `bun run check:parity-contract`; resolve any divergences (add to `paired` / `pairedViaInheritance` buckets as appropriate).
 - [ ] 7.5 Verify both example apps (vite React at `examples/vite`, Vue at `examples/vue`) load the fixture and edit a header without regression.
@@ -82,7 +82,7 @@ Deferred:
 
 - [ ] 8.1 Delete `hfEditPosition` state in `useHeaderFooterEditing.ts` if it's no longer needed in its current shape (the focused PM is now the source of truth for "which slot is being edited").
 - [ ] 8.2 Audit `useHeaderFooterEditing.ts` for now-dead code from the overlay-mount era; remove.
-- [ ] 8.3 Update `CLAUDE.md` to reflect the unified model. Specifically: remove any language describing the inline editor as a "separate visible PM," add the HF slot to the "Painter DOM contract" section as another consumer of `data-pm-start`/`data-pm-end`, and note that `.hf-editor-pm` no longer exists.
+- [ ] 8.3 Update `CLAUDE.md` to reflect the unified model. Specifically: remove any language describing the inline editor as a "separate visible PM," add the HF slot to the "Painter DOM contract" section as another consumer of `data-doc-from`/`data-doc-to`, and note that `.hf-editor-pm` no longer exists.
 - [ ] 8.4 File a follow-up ticket for: schema-level guard against `<w:footnoteReference>` inside HF content (ECMA-376 §17.11.4 forbids it; current PM schema doesn't enforce). The toolbar-level guard in task 6.4a is the cheap defense; schema-level enforcement is the durable fix. Out of scope for this change but worth tracking.
 - [ ] 8.5 File a follow-up ticket for: the UX question of single-click-vs-double-click to enter HF edit mode (deferred from design.md open questions).
 - [ ] 8.6 File a follow-up ticket for: deleting the dead `Section.headers`/`.footers` field in `packages/core/src/types/content/section.ts:192-194`. Never populated by any parser, never read by serializer or renderer. Deletion is API-breaking on the `@public` `Section` type, so route through a changeset.

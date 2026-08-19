@@ -13,13 +13,10 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from '../i18n';
 import type { CSSProperties, ReactNode } from 'react';
-import type {
-  ColorValue,
-  ParagraphAlignment,
-  Style,
-  Theme,
-} from '@eigenpal/docx-editor-core/types/document';
-import { resolveColorToHex } from '@eigenpal/docx-editor-core/utils';
+import type { ColorValue, Theme } from '@docx-editor.dev/core/contracts/editor';
+import { resolveColorToHex } from '../lib/colorResolver';
+import type { DocumentStyleSummary } from '../lib/stylePreview';
+import type { ParagraphAlignment } from './ui/AlignmentButtons';
 import { Button } from './ui/Button';
 import { Tooltip } from './ui/Tooltip';
 import { FontPicker } from './ui/FontPicker';
@@ -154,6 +151,12 @@ export interface ToolbarProps {
    * An empty array renders an empty (but enabled) dropdown.
    */
   fontFamilies?: ReadonlyArray<string | FontOption>;
+  /**
+   * Fonts the loaded document references that the browser can render (embedded
+   * faces + system-resolved). Rendered in a "Document fonts" group, deduped
+   * against `fontFamilies`. Managed by the editor, not a consumer prop.
+   */
+  documentFonts?: readonly FontOption[];
   /** Whether to show font size picker (default: true) */
   showFontSizePicker?: boolean;
   /** Whether to show text color picker (default: true) */
@@ -168,8 +171,8 @@ export interface ToolbarProps {
   showLineSpacingPicker?: boolean;
   /** Whether to show style picker (default: true) */
   showStylePicker?: boolean;
-  /** Document styles for the style picker */
-  documentStyles?: Style[];
+  /** Document styles for the style picker (`Editor.getDocumentStyles()`). */
+  documentStyles?: readonly DocumentStyleSummary[];
   /** Theme for the style picker / color picker theme matrix */
   theme?: Theme | null;
   /** Callback for print action. Set to enable the File > Print menu entry. */
@@ -190,10 +193,16 @@ export interface ToolbarProps {
   onInsertTable?: (rows: number, columns: number) => void;
   /** Whether to show table insert button (default: true) */
   showTableInsert?: boolean;
+  /** Whether to show the Help menu in the menu bar (default: true) */
+  showHelpMenu?: boolean;
   /** Callback when user wants to insert an image */
   onInsertImage?: () => void;
   /** Callback when user wants to insert a page break */
   onInsertPageBreak?: () => void;
+  /** Callback when user wants to insert a "next page" section break */
+  onInsertSectionBreakNextPage?: () => void;
+  /** Callback when user wants to insert a "continuous" section break */
+  onInsertSectionBreakContinuous?: () => void;
   /** Callback when user wants to insert a table of contents */
   onInsertTOC?: () => void;
   /** Callback when user wants to insert a shape */
@@ -220,6 +229,8 @@ export interface ToolbarProps {
   onOpenImageProperties?: () => void;
   /** Callback to open page setup dialog */
   onPageSetup?: () => void;
+  /** Callback to open the watermark dialog */
+  onWatermark?: () => void;
   /** Table context when cursor is in a table */
   tableContext?: {
     isInTable: boolean;
@@ -287,7 +298,9 @@ export function ToolbarButton({
     title
       ?.toLowerCase()
       .replace(/\s+/g, '-')
-      .replace(/\([^)]*\)/g, '')
+      // `[^()]` (not `[^)]`) so the run can't span unmatched `(` and
+      // backtrack quadratically on a long parenthesis-heavy title.
+      .replace(/\([^()]*\)/g, '')
       .trim();
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -299,15 +312,22 @@ export function ToolbarButton({
       variant="ghost"
       size="icon-sm"
       className={cn(
-        'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80',
-        active && 'bg-slate-900 text-white hover:bg-slate-800 hover:text-white',
+        // Hover + active states live in editor.css (.docx-editor-toolbar-toggle); see
+        // that rule for why they're not Tailwind utilities here.
+        'docx-editor-toolbar-toggle text-muted-foreground',
         disabled && 'opacity-30 cursor-not-allowed',
         className
       )}
+      data-active={active ? 'true' : undefined}
       onMouseDown={handleMouseDown}
       onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      aria-pressed={active}
+      // Native disabled controls receive no mouse event in Chromium, so their
+      // preventDefault handler cannot preserve the editor's focus/caret.
+      // Keep the control semantically disabled and out of tab order while
+      // allowing pointer-down cancellation at the toolbar boundary.
+      aria-disabled={disabled || undefined}
+      tabIndex={disabled ? -1 : undefined}
+      aria-pressed={active ? true : false}
       aria-label={ariaLabel || title}
       data-testid={testId ? `toolbar-${testId}` : undefined}
     >
@@ -329,7 +349,7 @@ export function ToolbarGroup({ label, children, className }: ToolbarGroupProps) 
   return (
     <div
       className={cn(
-        'flex items-center gap-px px-1.5 border-r border-slate-200/50 last:border-r-0 first:pl-0',
+        'flex items-center gap-px px-1.5 border-r border-border/50 last:border-r-0 first:pl-0',
         className
       )}
       role="group"
@@ -344,7 +364,7 @@ export function ToolbarGroup({ label, children, className }: ToolbarGroupProps) 
  * Toolbar separator
  */
 export function ToolbarSeparator() {
-  return <div className="w-px h-6 bg-slate-200 mx-1.5" role="separator" />;
+  return <div className="w-px h-6 bg-border mx-1.5" role="separator" />;
 }
 
 // ============================================================================
@@ -396,6 +416,7 @@ export function Toolbar(explicitProps: ToolbarProps) {
     children,
     showFontPicker = true,
     fontFamilies,
+    documentFonts,
     showFontSizePicker = true,
     showTextColorPicker = true,
     showHighlightColorPicker = true,
@@ -447,10 +468,12 @@ export function Toolbar(explicitProps: ToolbarProps) {
     (fontFamily: string) => {
       if (!disabled && onFormat) {
         onFormat({ type: 'fontFamily', value: fontFamily });
-        requestAnimationFrame(() => onRefocusEditor?.());
+        // Do not refocus here: focus() on an empty paragraph clears storedMarks
+        // / DTF (same regression as style picker). FormatToggle already uses
+        // mousedown preventDefault so the editor keeps focus.
       }
     },
-    [disabled, onFormat, onRefocusEditor]
+    [disabled, onFormat]
   );
 
   const normalizedFonts = React.useMemo(() => normalizeFontFamilies(fontFamilies), [fontFamilies]);
@@ -459,20 +482,18 @@ export function Toolbar(explicitProps: ToolbarProps) {
     (sizeInPoints: number) => {
       if (!disabled && onFormat) {
         onFormat({ type: 'fontSize', value: sizeInPoints });
-        requestAnimationFrame(() => onRefocusEditor?.());
       }
     },
-    [disabled, onFormat, onRefocusEditor]
+    [disabled, onFormat]
   );
 
   const handleTextColorChange = useCallback(
     (color: ColorValue | string) => {
       if (!disabled && onFormat) {
         onFormat({ type: 'textColor', value: color });
-        requestAnimationFrame(() => onRefocusEditor?.());
       }
     },
-    [disabled, onFormat, onRefocusEditor]
+    [disabled, onFormat]
   );
 
   const handleHighlightColorChange = useCallback(
@@ -480,10 +501,9 @@ export function Toolbar(explicitProps: ToolbarProps) {
       if (!disabled && onFormat) {
         const highlightValue = typeof color === 'string' ? color : '';
         onFormat({ type: 'highlightColor', value: highlightValue });
-        requestAnimationFrame(() => onRefocusEditor?.());
       }
     },
-    [disabled, onFormat, onRefocusEditor]
+    [disabled, onFormat]
   );
 
   const handleAlignmentChange = useCallback(
@@ -533,10 +553,11 @@ export function Toolbar(explicitProps: ToolbarProps) {
     (styleId: string) => {
       if (!disabled && onFormat) {
         onFormat({ type: 'applyStyle', value: styleId });
-        requestAnimationFrame(() => onRefocusEditor?.());
+        // Do not refocus — EmptyParagraphFormat + DTF own caret marks; a
+        // post-picker focus() was clearing them before the first keystroke.
       }
     },
-    [disabled, onFormat, onRefocusEditor]
+    [disabled, onFormat]
   );
 
   const handleTableAction = useCallback(
@@ -555,6 +576,14 @@ export function Toolbar(explicitProps: ToolbarProps) {
     if (!enableShortcuts) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // FAIL SOFT on a chord someone else already claimed, like the shared engine keymap.
+      //
+      // This is a `document`-level BUBBLE listener, so anything the host claimed on the way
+      // down has already run: `DocxEditor.Viewport` takes Ctrl/Cmd `=` (and its shifted `+`
+      // spelling) for live zoom during capture, and Word's subscript/superscript is bound to
+      // the same chord below. Without this, a host that mounts this toolbar around the new
+      // viewport got the zoom AND the script toggle from one keystroke.
+      if (event.defaultPrevented) return;
       const target = event.target as HTMLElement;
       const editorContainer = editorRef?.current;
       const barContainer = barRef.current;
@@ -659,7 +688,7 @@ export function Toolbar(explicitProps: ToolbarProps) {
       ref={barRef}
       className={cn(
         !inline &&
-          'flex items-center px-2 py-1 bg-[#f1f5f9] rounded-full min-h-[36px] overflow-x-auto mx-2 mb-1',
+          'flex items-center px-2 py-1 bg-muted rounded-full min-h-[36px] overflow-x-auto mx-2 mb-1',
         className
       )}
       style={inline ? { display: 'contents', ...style } : style}
@@ -692,15 +721,7 @@ export function Toolbar(explicitProps: ToolbarProps) {
       {/* Zoom Control */}
       {showZoomControl && (
         <ToolbarGroup label={t('formattingBar.groups.zoom')}>
-          <ZoomControl
-            value={zoom}
-            onChange={onZoomChange}
-            minZoom={0.5}
-            maxZoom={2}
-            disabled={disabled}
-            compact
-            showButtons={false}
-          />
+          <ZoomControl value={zoom} onChange={onZoomChange} disabled={disabled} compact />
         </ToolbarGroup>
       )}
 
@@ -726,6 +747,7 @@ export function Toolbar(explicitProps: ToolbarProps) {
               value={currentFormatting.fontFamily || 'Arial'}
               onChange={handleFontFamilyChange}
               fonts={normalizedFonts}
+              documentFonts={documentFonts}
               disabled={disabled}
               width={60}
               placeholder="Arial"
@@ -943,11 +965,6 @@ export function Toolbar(explicitProps: ToolbarProps) {
 // RE-EXPORTED UTILITIES (from toolbarUtils.ts)
 // ============================================================================
 
-export {
-  getSelectionFormatting,
-  applyFormattingAction,
-  hasActiveFormatting,
-  mapHexToHighlightName,
-} from './toolbarUtils';
+export { getSelectionFormatting, hasActiveFormatting, mapHexToHighlightName } from './toolbarUtils';
 
 export default Toolbar;

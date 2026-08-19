@@ -1,0 +1,317 @@
+// Provider-first host for the docx editor facade.
+//
+// `DocxEditorRoot` renders no DOM of its own: it creates the facade WITHOUT a container
+// (the instance stashes its document bytes and does no DOM work), publishes it through
+// `DocxEditorContext`, and lets `DocxEditor.Content` attach a mount point wherever the
+// host's tree puts one. Toolbars built from the hooks therefore work whether they render
+// above, below, or nowhere near the painted pages.
+//
+// STRICTMODE CONTRACT. `destroy()` is terminal on the facade — a destroyed instance
+// never remounts — so the mount effect creates a FRESH instance on every run and
+// destroys it on cleanup. React StrictMode's double-invoked effect gets two instances;
+// the first dies unused, the second is the one the tree sees. Identity of the published
+// instance flows through `useState`, so consumers re-render when it lands.
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import type {
+  DocumentChange,
+  DocumentSource,
+  Editor,
+  EditorFontError,
+  FontConfiguration,
+  ZoomMode,
+} from '@docx-editor.dev/core/contracts/editor';
+import {
+  createDocxEditor,
+  defaultTableLabel,
+  resolveZoomMode,
+  sameZoomMode,
+} from '@docx-editor.dev/core/editor';
+import type { EditorModule } from '@docx-editor.dev/core/editor';
+import type {
+  DocxEditorInstance,
+  FontConfigurationFragment,
+  FontResolver,
+  ImageDecodePort,
+} from '@docx-editor.dev/core/editor';
+import { useTranslation, type TranslationKey } from '../i18n';
+import { DocxEditorContext, ReviewRailContext, type ReviewRailRegistry } from './context';
+import { HyperlinkPopupContext, useHyperlinkPopupInstance } from './useHyperlinkPopup';
+import { ContentControlContext, useContentControlInstance } from './useContentControl';
+import { ImageInsertProvider } from './images/ImageInsert';
+import {
+  NavigationLayoutContext,
+  createNavigationLayoutStore,
+} from './navigation/navigation-layout';
+
+/**
+ * Props for `DocxEditor.Root`. Creation parameters (`document`, `fonts`, `author`,
+ * `locale`, and the initial `mode`/`zoom`) are sampled when the instance is created;
+ * only `document` and `fonts` identity remount it. Later `mode` and `zoom` changes flow through
+ * `Editor.setZoom` so edits, the caret, and the undo history survive.
+ *
+ * @public
+ */
+export interface DocxEditorRootProps {
+  /** A document to load: DOCX bytes or an existing handle. Identity change remounts. */
+  document?: DocumentSource;
+  /**
+   * Font bytes for Word-accurate (HarfBuzz-shaped) wrap and pagination. Omitted, layout
+   * uses a fixed-width estimate; fonts embedded in the document are wired automatically
+   * either way. Pass `await loadDefaultFonts()` from `@docx-editor.dev/fonts` for
+   * Word's default faces — a bare fragment is accepted — or compose several origins
+   * with `composeFontConfiguration`. Sampled at mount; identity change remounts;
+   * failures degrade to the fixed measurer and report through `onFontError`.
+   */
+  fonts?: FontConfiguration | FontConfigurationFragment | FontResolver;
+  author?: string;
+  locale?: string;
+  /** Drawing refusal labels for painted placeholders; defaults to the active locale catalogue. */
+  translate?: (key: string, params?: Record<string, string | number>) => string;
+  /**
+   * Capability modules to register (`@docx-editor.dev/pro`'s review module,
+   * custom nodes). Sampled at mount only, like `mode`: module registration is
+   * construction-time in the engine.
+   */
+  modules?: readonly EditorModule[];
+  /**
+   * The mode the editor opens in, matching the toolbar's three-state pill. Sampled at
+   * mount only.
+   *
+   * `'edit'` opens in editing even when the document's `w:trackRevisions` asks for
+   * tracked changes; `'suggesting'` opens in suggesting (needs a review module and an
+   * `author`); `'view'` is read-only and the toolbar cannot leave it. Omitted, the
+   * DOCUMENT decides: a package carrying `w:trackRevisions` opens in suggesting.
+   */
+  mode?: 'edit' | 'view' | 'suggesting';
+  /**
+   * A fixed scale. Supplying one also means the mode is fixed, unless `zoomMode` says
+   * otherwise: an app that pinned 100% keeps 100% on every window size.
+   */
+  zoom?: number;
+  /**
+   * Where the scale comes from. Defaults to `'auto'`: fit the page width, between 50% and
+   * 100%, so a window with room for the sheet renders at 100% and a narrower one shrinks
+   * rather than growing a horizontal scrollbar — down to the floor, past which it scrolls.
+   *
+   * A fit tracks the room beside the page, so opening the comments rail or docking the
+   * navigation pane shrinks the document by what it took. Pass `{ type: 'fixed' }` to opt out.
+   */
+  zoomMode?: ZoomMode | 'auto';
+  /** Fired once per instance, after it is published to the tree (and after any
+   *  `DocxEditor.Content` in the same commit has attached its mount point). A large
+   *  document mounts behind one painted frame; `onReady` fires AFTER that mount lands,
+   *  so scrolling or selecting from it works on any document size. */
+  onReady?: (editor: Editor) => void;
+  /** Fired when the document changes (revision + identity deltas, not bytes). */
+  onChange?: (change: DocumentChange) => void;
+  /** Fired with the typed font failure when the shaped-font pipeline rejects. */
+  onFontError?: (error: EditorFontError) => void;
+  /**
+   * Localized labels for table insertion furniture. When omitted, core falls back to
+   * bundled English through {@link defaultTableLabel}.
+   */
+  tableInteractionLabel?: (key: 'table.insertRowBelow' | 'table.insertColumnRight') => string;
+  /** Optional decode port for embedded image insertion and paint in tests or custom hosts. */
+  imageDecodePort?: ImageDecodePort;
+  children?: ReactNode;
+}
+
+/**
+ * Whether two `zoomMode` props say the same thing, `'auto'` shorthand included.
+ *
+ * By VALUE, because the prop is an object and a host writing it inline hands over a new one
+ * on every render. Resolving both first makes `'auto'` and its long form compare equal, which
+ * is what a host switching between the two spellings would expect.
+ */
+function sameZoomProp(a: ZoomMode | 'auto', b: ZoomMode | 'auto'): boolean {
+  if (a === b) return true;
+  const left = resolveZoomMode(a);
+  const right = resolveZoomMode(b);
+  return left !== null && right !== null && sameZoomMode(left, right);
+}
+
+/**
+ * Creates and owns a `DocxEditorInstance` and provides it to the subtree. Renders no
+ * DOM — compose it with `DocxEditor.Viewport` + `DocxEditor.Content` for the painted
+ * pages, and any hook-built chrome anywhere inside.
+ *
+ * @public
+ */
+export function DocxEditorRoot(props: DocxEditorRootProps) {
+  const {
+    document: doc,
+    fonts,
+    zoom,
+    zoomMode,
+    tableInteractionLabel,
+    imageDecodePort,
+    children,
+  } = props;
+  const { t: catalogT } = useTranslation();
+  const defaultTranslate = useCallback(
+    (key: string, params?: Record<string, string | number>) =>
+      catalogT(key as TranslationKey, params),
+    [catalogT]
+  );
+
+  // Latest props, read inside effects without retriggering them.
+  const propsRef = useRef(props);
+  propsRef.current = props;
+
+  const [editor, setEditor] = useState<DocxEditorInstance | null>(null);
+
+  // One instance per document/fonts identity, and per effect run: `destroy()` is
+  // terminal, so a StrictMode re-run must build anew rather than resurrect.
+  useEffect(() => {
+    const p = propsRef.current;
+    const translate = p.translate ?? defaultTranslate;
+    const instance = createDocxEditor({
+      ...(p.document !== undefined ? { document: p.document } : {}),
+      ...(p.fonts ? { fonts: p.fonts } : {}),
+      ...(p.author !== undefined ? { author: p.author } : {}),
+      ...(p.locale !== undefined ? { locale: p.locale } : {}),
+      translate,
+      ...(p.mode !== undefined ? { mode: p.mode } : {}),
+      ...(p.modules !== undefined ? { modules: p.modules } : {}),
+      ...(p.zoom !== undefined ? { zoom: p.zoom } : {}),
+      ...(p.zoomMode !== undefined ? { zoomMode: p.zoomMode } : {}),
+      ...(p.tableInteractionLabel ? { tableInteractionLabel: p.tableInteractionLabel } : {}),
+      ...(p.imageDecodePort ? { imageDecodePort: p.imageDecodePort } : {}),
+      onFontError: (error) => propsRef.current.onFontError?.(error),
+    });
+    const offChange = instance.on('change', (change) => propsRef.current.onChange?.(change));
+    setEditor(instance);
+    return () => {
+      offChange();
+      instance.destroy();
+      // Functional update: a StrictMode re-run's second instance must not be clobbered.
+      setEditor((current) => (current === instance ? null : current));
+    };
+  }, [doc, fonts, defaultTranslate, imageDecodePort]);
+
+  // Fired AFTER the instance is published: this effect runs in the commit that rendered
+  // the new editor, after child layout effects — so a `DocxEditor.Content` in the tree
+  // has already attached. A SMALL document is mounted by then and `onReady` observes it
+  // directly. A LARGE one is still behind the engine's open yield (`isOpening`), so the
+  // callback waits for the mount's own `change` — the first and only event that can fire
+  // inside that window — and then observes a real document too: `onReady` scrolling to a
+  // page or selecting a range works on any document size.
+  useEffect(() => {
+    if (!editor) return undefined;
+    if (!editor.snapshot().isOpening) {
+      propsRef.current.onReady?.(editor);
+      return undefined;
+    }
+    const off = editor.on('change', () => {
+      off();
+      propsRef.current.onReady?.(editor);
+    });
+    // Unsubscribe is idempotent, so the self-removal above and this cleanup can both run.
+    return off;
+  }, [editor]);
+
+  // Zoom is a facade parameter, not a remount: tearing the editor down for a zoom
+  // change would discard the user's edits and undo history.
+  //
+  // MODE AFTER LEVEL, and both in one effect. `setZoom` leaves any fit mode by design, so
+  // running these in two effects let the order decide the outcome: a host passing both
+  // `zoom={1.5}` and `zoomMode="auto"` would get whichever ran last.
+  //
+  // RE-ASSERTED WHEN THE PROP ITSELF MOVES, which is what these refs are for — and ALSO
+  // after a zoom-prop update while the host still declares a fit/`auto` mode. `setZoom`
+  // exits fit; skipping `setZoomMode` because the mode prop is unchanged would leave the
+  // editor fixed despite the declared mode. Unrelated re-renders still do not re-apply:
+  // mode is an object, and the documented spelling — `zoomMode={{ type: 'fit', fit:
+  // 'pageWidth' }}` — is a fresh literal on every parent render, so an identity dependency
+  // would push a toolbar-picked 150% back to the fit on the host's next keystroke.
+  const applied = useRef<{
+    editor: DocxEditorInstance | null;
+    zoom: number | undefined;
+    mode: ZoomMode | 'auto' | undefined;
+  }>({ editor: null, zoom: undefined, mode: undefined });
+  useEffect(() => {
+    if (!editor) return;
+    // A new instance has none of this yet, whatever the previous one was told.
+    const fresh = applied.current.editor !== editor;
+    if (fresh) applied.current = { editor, zoom: undefined, mode: undefined };
+
+    let zoomChanged = false;
+    if (zoom !== undefined && zoom !== applied.current.zoom) {
+      applied.current.zoom = zoom;
+      editor.setZoom(zoom);
+      zoomChanged = true;
+    }
+    const previousMode = applied.current.mode;
+    const modeMoved =
+      zoomMode !== undefined &&
+      (previousMode === undefined || !sameZoomProp(previousMode, zoomMode));
+    // Preserve a declared fit after `setZoom` tore it down. Fixed declarations stay fixed.
+    const resolved = zoomMode === undefined ? null : resolveZoomMode(zoomMode);
+    const reassertDeclaredFit =
+      zoomChanged && zoomMode !== undefined && resolved !== null && resolved.type === 'fit';
+    if (modeMoved || reassertDeclaredFit) {
+      applied.current.mode = zoomMode!;
+      editor.setZoomMode(zoomMode!);
+    }
+  }, [editor, zoom, zoomMode]);
+
+  // Table furniture labels follow the live locale resolver without remounting the editor.
+  useEffect(() => {
+    if (!editor) return;
+    editor.setTableInteractionLabel(tableInteractionLabel ?? defaultTableLabel);
+  }, [editor, tableInteractionLabel]);
+
+  // A rail registers itself here so the viewport only reserves a gutter when one is
+  // actually composed in. See `ReviewRailContext`.
+  const [rails, setRails] = useState(0);
+  const railRegistry = useMemo<ReviewRailRegistry>(
+    () => ({
+      mounted: rails,
+      register: () => {
+        setRails((count) => count + 1);
+        return () => setRails((count) => Math.max(0, count - 1));
+      },
+    }),
+    [rails]
+  );
+
+  // The channel between an open navigation pane and the chrome it displaces. A store
+  // rather than state: the shift is recomputed on every viewport resize, and state here
+  // would re-render the whole editor subtree at resize frequency. Created once per Root —
+  // its identity must not change, or the two consumers resubscribe on every render.
+  const navigationLayout = useMemo(createNavigationLayoutStore, []);
+
+  return (
+    <ReviewRailContext.Provider value={railRegistry}>
+      <DocxEditorContext.Provider value={editor}>
+        <NavigationLayoutContext.Provider value={navigationLayout}>
+          {/* ONE link-popover state per editor, published here so a TOOLBAR button and the
+              popover panel — which are siblings, not ancestor and descendant — see the same
+              open/closed state and only one of them registers with the engine's gestures. */}
+          <HyperlinkPopupProvider>
+            <ContentControlProvider>
+              <ImageInsertProvider>{children}</ImageInsertProvider>
+            </ContentControlProvider>
+          </HyperlinkPopupProvider>
+        </NavigationLayoutContext.Provider>
+      </DocxEditorContext.Provider>
+    </ReviewRailContext.Provider>
+  );
+}
+
+/**
+ * Publishes the popover state. A child of the editor context rather than part of `Root`
+ * itself, because it consumes that context and a component cannot read its own provider.
+ */
+function HyperlinkPopupProvider({ children }: { children?: ReactNode }) {
+  const popup = useHyperlinkPopupInstance(true);
+  return <HyperlinkPopupContext.Provider value={popup}>{children}</HyperlinkPopupContext.Provider>;
+}
+
+/** One content-control chrome state per editor — inspector open + mode toggles. */
+function ContentControlProvider({ children }: { children?: ReactNode }) {
+  const chrome = useContentControlInstance();
+  return <ContentControlContext.Provider value={chrome}>{children}</ContentControlContext.Provider>;
+}

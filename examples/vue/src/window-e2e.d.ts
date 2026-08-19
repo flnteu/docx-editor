@@ -9,10 +9,15 @@ declare global {
       getLastTextblockParaId: () => string | null;
       scrollToParaId: (paraId: string) => boolean;
       scrollToPosition: (pmPos: number) => void;
+      getDocSize: () => number | null;
+      highlightRange: (from: number, to: number) => void;
+      scrollToCommentId: (commentId: number) => boolean;
+      scrollToChangeId: (revisionId: number) => boolean;
       scrollToPage: (pageNumber: number) => void;
       getTotalPages: () => number;
       getCurrentPage: () => number;
       saveByteLength: () => Promise<number | null>;
+      updateTableOfContents: () => boolean;
       agentAddComment: (opts: {
         paraId: string;
         text: string;

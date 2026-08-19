@@ -4,7 +4,7 @@ Floating images in DOCX files specify text wrapping behavior (square, tight, thr
 
 ## What Changes
 
-- **Integrate FloatingObjectManager into paragraph measurement**: The existing `FloatingObjectManager.computeAvailableWidth()` (already implemented in `floatingObjects.ts`) will be called during line measurement so each line's width is reduced where it overlaps with a floating image's exclusion zone.
+- **Integrate FloatingObjectManager into paragraph measurement**: The existing `FloatingObjectManager.computeAvailableWidth()` (already implemented in `wrapZones.ts`) will be called during line measurement so each line's width is reduced where it overlaps with a floating image's exclusion zone.
 - **Per-line X offset and width in rendering**: Lines that are shifted by left-side floats will receive an X offset so text starts after the image. Lines narrowed by right-side floats will have reduced width.
 - **Cross-paragraph exclusion zone propagation**: Floating images anchored to one paragraph can span multiple paragraphs vertically. The exclusion zones will be accumulated across paragraphs within the same page/column so subsequent paragraphs also wrap.
 - **wrapTopAndBottom support**: Lines that vertically overlap with a `wrapTopAndBottom` image will be pushed below it entirely (available width = 0 forces a vertical skip).
@@ -24,9 +24,9 @@ Floating images in DOCX files specify text wrapping behavior (square, tight, thr
 
 ## Impact
 
-- **Layout engine**: `floatingObjects.ts` (minor API additions), `types.ts` (MeasuredLine gets offsetX field)
-- **Layout painter**: `renderParagraph.ts` (major — measurement phase integration, per-line offset rendering), `renderPage.ts` (pass exclusion zones to paragraph rendering), `renderTable.ts` (cell-level floating image extraction and layer rendering), `renderImage.ts` (minor — cell-level image rendering)
-- **Layout bridge**: `toFlowBlocks.ts` (ensure floating image runs are properly extracted for cell-level processing)
+- **Layout engine**: `wrapZones.ts` (minor API additions), `types.ts` (MeasuredLine gets offsetX field)
+- **Layout painter**: `renderParagraph.ts` (major — measurement phase integration, per-line offset rendering), `paintPage.ts` (pass exclusion zones to paragraph rendering), `renderTable.ts` (cell-level floating image extraction and layer rendering), `renderImage.ts` (minor — cell-level image rendering)
+- **Layout bridge**: `buildBoxTree.ts` (ensure floating image runs are properly extracted for cell-level processing)
 - **No API changes**: Parsing, ProseMirror schema, and serialization are unaffected — all data is already correctly parsed and stored
 - **No dependencies**: No new packages needed; this is purely a layout/rendering change
 - **Test document**: `examples/vite/public/float-wrap-comprehensive-test.docx` created with all wrap types, position modes, table cells, and edge cases

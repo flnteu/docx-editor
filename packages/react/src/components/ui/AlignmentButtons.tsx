@@ -9,18 +9,24 @@
 
 import React, { useState, useCallback } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
-import type { ParagraphAlignment } from '@eigenpal/docx-editor-core/types/document';
 import { MaterialSymbol } from './MaterialSymbol';
 import { Button } from './Button';
 import { Tooltip } from './Tooltip';
 import { cn } from '../../lib/utils';
 import { useFixedDropdown } from '../../hooks/useFixedDropdown';
 import { useTranslation } from '../../i18n';
-import type { TranslationKey } from '@eigenpal/docx-editor-i18n';
+import type { TranslationKey } from '../../i18n';
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+/**
+ * The paragraph alignments this control understands, in OOXML `w:jc`
+ * vocabulary (`both` is Word's justify; `distribute` renders as justify).
+ * Presentation-only: the dropdown emits the first four.
+ */
+export type ParagraphAlignment = 'left' | 'center' | 'right' | 'both' | 'distribute';
 
 /**
  * Alignment option for the buttons
@@ -174,8 +180,8 @@ export function AlignmentButtons({
       variant="ghost"
       size="icon-sm"
       className={cn(
-        'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80',
-        isOpen && 'bg-slate-100',
+        'text-muted-foreground hover:text-foreground hover:bg-muted/80',
+        isOpen && 'bg-muted',
         disabled && 'opacity-30 cursor-not-allowed'
       )}
       onMouseDown={handleMouseDown}
@@ -200,10 +206,10 @@ export function AlignmentButtons({
           ref={dropdownRef}
           style={{
             ...dropdownStyle,
-            backgroundColor: 'white',
+            backgroundColor: 'var(--doc-surface)',
             border: '1px solid var(--doc-border)',
             borderRadius: 8,
-            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.12)',
+            boxShadow: '0 4px 16px var(--doc-shadow)',
             padding: 6,
           }}
           onMouseDown={(e) => e.stopPropagation()}

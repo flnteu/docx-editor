@@ -1,0 +1,125 @@
+---
+title: 'Content controls'
+description: 'Find and fill Word content controls by tag or id. Set text, dropdown, checkbox, and date values, from inside the editor or from a server-side script.'
+category: 'Guides'
+seoTitle: 'Content controls (SDTs)'
+---
+
+Word content controls (`w:sdt`, Structured Document Tags) are labeled, bounded regions of a document. A control carries a stable `tag`, `title`, and `id`. That stability makes them the natural anchor for templates and programmatic filling: design the template in Word, tag the fillable regions, then fill them by tag from code.
+
+The editor parses controls into the canonical tree, keeps them editable, renders their boundary, and round-trips them with structural fidelity. Properties it does not model, such as `w:dataBinding` and `w15:repeatingSection`, remain as generic nodes and survive editing and save.
+
+<Callout>
+  Content controls are addressed by `tag`, `title`, or `id`. They are not `{{ mustache }}` template
+  variables; the two systems can coexist in one document.
+</Callout>
+
+## Filling a template from a server
+
+[`@docx-editor.dev/editor-api`](/docs/2.x/editor-api) is the headless path, and its object model is Office.js-compatible. Reads are batched, then one `sync()` sends the writes as a single ordered batch:
+
+```ts
+import { readFile, writeFile } from 'node:fs/promises';
+import { DocxEditor } from '@docx-editor.dev/editor-api';
+
+const runtime = await DocxEditor.createServer(await readFile('contract-template.docx'));
+try {
+  await runtime.run(async (context) => {
+    const controls = context.document.body.contentControls;
+    controls.load();
+    await context.sync(); // one round trip: now you know what the template has
+
+    for (const control of controls.items) {
+      if (control.tag === 'customerName') control.setValue({ kind: 'text', text: 'Acme GmbH' });
+      if (control.tag === 'effective') control.setValue({ kind: 'date', iso: '2026-07-01' });
+      if (control.tag === 'agree') control.setValue({ kind: 'checkbox', checked: true });
+      if (control.tag === 'betaClause') control.delete(false); // condition not met
+    }
+    await context.sync(); // one atomic batch: all of the writes, or none
+  });
+
+  await writeFile('contract-acme.docx', Buffer.from(await runtime.save()));
+} finally {
+  runtime.dispose();
+}
+```
+
+`getByTag(tag)` narrows the collection directly when you know what you are looking for, and `getById(id)` / `getFirstOrNullObject()` address a single control.
+
+## Values are typed
+
+`setValue` takes a discriminated value rather than a bare string, so a typed control cannot be filled with something it cannot hold:
+
+| Kind       | Shape                           | For                                                    |
+| ---------- | ------------------------------- | ------------------------------------------------------ |
+| `text`     | `{ kind: 'text', text }`        | Rich-text and plain-text controls.                     |
+| `listItem` | `{ kind: 'listItem', value }`   | Dropdowns and combo boxes. Must match a declared item. |
+| `checkbox` | `{ kind: 'checkbox', checked }` | Checkbox controls.                                     |
+| `date`     | `{ kind: 'date', iso }`         | Date pickers. `YYYY-MM-DD` or a full ISO-8601 instant. |
+
+`insertText(text, 'Replace' | 'Start' | 'End')` writes free text where that is what you want, and `delete(keepContent)` either drops a control with its content or unwraps it and keeps the content in place.
+
+## Reading state before writing
+
+`placeholderShown` tells you the control still holds Word's boilerplate ("Click here to enter text") rather than real data. Check it before treating `text` as entered content. `cannotEdit` and `cannotDelete` expose the control's locks, and are settable when you are producing a template rather than filling one.
+
+```ts
+controls.load();
+await context.sync();
+
+const unfilled = controls.items.filter((c) => c.placeholderShown);
+```
+
+## In the editor
+
+`useContentControl()` is the live equivalent. It reports the control at the caret, whether it can be written, and why not when it cannot:
+
+```tsx
+import { useContentControl } from '@docx-editor.dev/react';
+
+function ControlInspector() {
+  const { control, setValue, canSetValue, setValueDisabledReason, remove, canRemove } =
+    useContentControl();
+
+  if (!control) return null;
+
+  return (
+    <div>
+      <h4>{control.alias ?? control.tag ?? control.id}</h4>
+      <p>{control.controlType}</p>
+      <button
+        disabled={!canSetValue}
+        title={setValueDisabledReason ?? undefined}
+        onClick={() => setValue('Acme GmbH')}
+      >
+        Fill
+      </button>
+      <button disabled={!canRemove} onClick={() => remove()}>
+        Remove
+      </button>
+    </div>
+  );
+}
+```
+
+The inspector state carries `tag`, `alias`, `id`, `controlType`, `locked`, `removalLocked`, `effectiveLock`, `bound` (whether it is driven by a data binding), and `placeholder`.
+
+`showAll` / `setShowAll` toggles boundary rendering for every control, and `formFill` / `setFormFill` puts the document into fill-only mode, where the caret can enter controls but not the text around them. `DocxEditor.ContentControl` is the packaged inspector panel over exactly this hook, and `CONTENT_CONTROL_SLOTS` lists the matching chrome slot ids.
+
+A data-bound control refuses a direct write: its content comes from the Custom XML store, so writing it here would not persist in Word. `setValueDisabledReason` says so rather than failing silently.
+
+## Typed control chrome
+
+In the editor, typed controls get an interactive trigger at the top-right of their box: it toggles the checkbox, opens the dropdown's item menu, or opens a date picker, each as a normal undoable edit. No wiring required.
+
+## Current limits
+
+- A control that _wraps_ a whole table cell or row is not supported (controls _inside_ a cell are).
+- A control inside a hyperlink is not surfaced.
+- `dataBinding` and repeating sections round-trip but have no live behavior: no bound-value resolution, no automatic repeat expansion.
+
+## Next steps
+
+- [Editing API](/docs/2.x/editor-api): the full object model and its batching rules
+- [Custom nodes](/docs/2.x/pro/custom-nodes): your own typed inline nodes over the same OOXML primitive
+- [Hooks](/docs/2.x/react/hooks)

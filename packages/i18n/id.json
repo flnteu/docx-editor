@@ -1,0 +1,647 @@
+{
+  "_lang": "id",
+  "common": {
+    "cancel": "Batal",
+    "apply": "Terapkan",
+    "close": "Tutup",
+    "comment": "Komentar",
+    "dismiss": "Abaikan"
+  },
+  "toolbar": {
+    "ariaLabel": "Bilah alat pemformatan",
+    "file": "File",
+    "format": "Format",
+    "insert": "Sisipkan",
+    "open": "Buka",
+    "openShortcut": "Ctrl+O",
+    "save": "Simpan",
+    "saveShortcut": "Ctrl+S",
+    "print": "Cetak",
+    "printShortcut": "Ctrl+P",
+    "pageSetup": "Pengaturan Halaman",
+    "leftToRight": "Kiri ke Kanan",
+    "rightToLeft": "Kanan ke Kiri",
+    "image": "Gambar",
+    "table": "Tabel",
+    "break": "Batas",
+    "pageBreak": "Batas Halaman",
+    "sectionBreakNextPage": "Batas Section Halaman Baru",
+    "sectionBreakContinuous": "Batas Section Berlanjut",
+    "tableOfContents": "Daftar Isi",
+    "watermark": "Tanda Air",
+    "help": "Bantuan",
+    "reportIssue": "Laporkan Masalah",
+    "insertFootnote": "Sisipkan catatan kaki",
+    "insertEndnote": "Sisipkan catatan akhir"
+  },
+  "formattingBar": {
+    "groups": {
+      "history": "Riwayat",
+      "zoom": "Zoom",
+      "styles": "Gaya",
+      "font": "Font",
+      "textFormatting": "Pemformatan Teks",
+      "script": "Skrip",
+      "alignment": "Perataan",
+      "listFormatting": "Pemformatan Daftar",
+      "image": "Gambar",
+      "table": "Tabel"
+    },
+    "undo": "Urungkan",
+    "undoShortcut": "Urungkan (Ctrl+Z)",
+    "redo": "Ulangi",
+    "redoShortcut": "Ulangi (Ctrl+Y)",
+    "bold": "Tebal",
+    "boldShortcut": "Tebalkan (Ctrl+B)",
+    "italic": "Miring",
+    "italicShortcut": "Miringkan (Ctrl+I)",
+    "underline": "Garis Bawah",
+    "underlineShortcut": "Garis bawah (Ctrl+U)",
+    "strikethrough": "Coret",
+    "fontColor": "Warna Font",
+    "highlightColor": "Warna Sorotan",
+    "insertLink": "Sisipkan Tautan",
+    "insertLinkShortcut": "Sisipkan tautan (Ctrl+K)",
+    "superscript": "Superskrip",
+    "superscriptShortcut": "Superskrip (Ctrl+Shift+=)",
+    "subscript": "Subskrip",
+    "subscriptShortcut": "Subskrip (Ctrl+=)",
+    "imageProperties": "Properti Gambar",
+    "imagePropertiesShortcut": "Properti gambar (alt text, border)...",
+    "clearFormatting": "Hapus Pemformatan",
+    "commentsAndChanges": "Komentar & Perubahan",
+    "unavailableInPreview": "Tidak tersedia dalam versi pratinjau ini",
+    "more": "Lainnya",
+    "altText": "Teks alternatif",
+    "imageWrap": "Bungkus teks"
+  },
+  "alignment": {
+    "alignLeft": "Rata Kiri",
+    "alignLeftShortcut": "Ctrl+L",
+    "center": "Tengah",
+    "centerShortcut": "Ctrl+E",
+    "alignRight": "Rata Kanan",
+    "alignRightShortcut": "Ctrl+R",
+    "justify": "Rata Kiri-Kanan",
+    "justifyShortcut": "Ctrl+J"
+  },
+  "lists": {
+    "ariaLabel": "Pemformatan daftar",
+    "typeAriaLabel": "Pilih gaya daftar",
+    "indentationAriaLabel": "Tingkat lekukan",
+    "bulletList": "Daftar poin",
+    "numberedList": "Daftar bernomor",
+    "decreaseIndent": "Kurangi indentasi",
+    "increaseIndent": "Tambahkan indentasi"
+  },
+  "lineSpacing": {
+    "label": "Jarak antar baris",
+    "single": "1.0",
+    "double": "2.0",
+    "lineSpacingTitle": "Jarak antar baris: {label}",
+    "blockSpacingRules": "Jarak antar paragraf",
+    "addSpaceAfter": "Tambahkan spasi setelah paragraf",
+    "addSpaceBefore": "Tambahkan spasi sebelum paragraf",
+    "removeSpaceAfter": "Hapus spasi setelah paragraf",
+    "removeSpaceBefore": "Hapus spasi sebelum paragraf"
+  },
+  "styles": {
+    "selectAriaLabel": "Pilih gaya paragraf",
+    "normalText": "Teks normal",
+    "title": "Judul",
+    "subtitle": "Subjudul",
+    "heading1": "Judul 1",
+    "heading2": "Judul 2",
+    "heading3": "Judul 3"
+  },
+  "font": {
+    "selectAriaLabel": "Pilih font",
+    "sansSerif": "Sans serif",
+    "serif": "Serif",
+    "monospace": "Monospace",
+    "documentFonts": "Font dokumen"
+  },
+  "fontSize": {
+    "decrease": "Perkecil ukuran font",
+    "increase": "Perbesar ukuran font",
+    "label": "Ukuran font",
+    "listLabel": "Ukuran font"
+  },
+  "zoom": {
+    "ariaLabel": "Zoom: {label}",
+    "zoomOut": "Perkecil",
+    "zoomIn": "Perbesar",
+    "zoomLevel": "Tingkat zoom",
+    "automatic": null,
+    "fitWidth": null
+  },
+  "colorPicker": {
+    "highlightColors": "Warna Sorotan",
+    "customColor": "Warna Kustom",
+    "noColor": "Tidak ada warna",
+    "automatic": "Otomatis",
+    "themeColors": "Warna Tema",
+    "standardColors": "Warna Standar",
+    "colors": {
+      "black": "Hitam",
+      "darkRed": "Merah Gelap",
+      "red": "Merah",
+      "orange": "Jingga",
+      "yellow": "Kuning",
+      "darkYellow": "Kuning Gelap",
+      "green": "Hijau",
+      "darkGreen": "Hijau Gelap",
+      "blue": "Biru",
+      "darkBlue": "Biru Tua",
+      "purple": "Ungu",
+      "white": "Putih",
+      "lightGreen": "Hijau Muda",
+      "lightBlue": "Biru Muda",
+      "darkGray": "Abu-abu Tua",
+      "cyan": "Sian",
+      "magenta": "Magenta",
+      "brightGreen": "Hijau Cerah",
+      "darkCyan": "Sian Tua",
+      "darkMagenta": "Magenta Tua",
+      "lightGray": "Abu-abu Muda"
+    },
+    "apply": "Terapkan",
+    "theme": {
+      "accent1": "Aksen 1",
+      "accent2": "Aksen 2",
+      "accent3": "Aksen 3",
+      "accent4": "Aksen 4",
+      "accent5": "Aksen 5",
+      "accent6": "Aksen 6",
+      "background1": "Latar Belakang 1",
+      "background2": "Latar Belakang 2",
+      "text1": "Teks 1",
+      "text2": "Teks 2"
+    }
+  },
+  "dialogs": {
+    "imageProperties": {
+      "title": "Properti gambar",
+      "altText": "Teks alternatif",
+      "altTextPlaceholder": "Teks deskriptif untuk pembaca layar",
+      "textWrapping": "Pembungkus teks",
+      "dimensions": "Dimensi",
+      "widthLabel": "Lebar:",
+      "heightLabel": "Tinggi:",
+      "lockAspectRatio": "Kunci rasio aspek"
+    },
+    "imagePosition": {
+      "relativeOptions": {
+        "page": "Halaman",
+        "column": "Kolom",
+        "margin": "Margin",
+        "character": "Karakter",
+        "paragraph": "Paragraf",
+        "line": "Baris"
+      }
+    },
+    "pageSetup": {
+      "title": "Pengaturan Halaman",
+      "pageSize": "Ukuran Halaman",
+      "sizeLabel": "Ukuran:",
+      "custom": "Kustom",
+      "orientation": "Orientasi",
+      "portrait": "Portrait",
+      "landscape": "Landscape",
+      "margins": "Margin",
+      "top": "Atas",
+      "bottom": "Bawah",
+      "left": "Kiri",
+      "right": "Kanan",
+      "pageSizes": {
+        "letter": "Letter (21,59 × 27,94 cm)",
+        "a4": "A4 (21 × 29,7 cm)",
+        "legal": "Legal (21,59 × 35,56 cm)",
+        "a3": "A3 (29,7 × 42 cm)",
+        "a5": "A5 (14,8 × 21 cm)",
+        "b5": "B5 (17,6 × 25 cm)",
+        "executive": "Executive (18,42 × 26,67 cm)"
+      },
+      "applyTo": "Terapkan ke",
+      "applyToDocument": "Seluruh dokumen",
+      "applyToSection": "Bagian ini"
+    },
+    "footnoteProperties": {
+      "title": "Catatan Kaki dan Catatan Akhir",
+      "footnotes": "Catatan Kaki",
+      "endnotes": "Catatan Akhir",
+      "position": "Posisi",
+      "numberFormat": "Format Angka",
+      "numbering": "Penomoran",
+      "footnotePositions": {
+        "bottomOfPage": "Bawah Halaman",
+        "belowText": "Di Bawah Teks"
+      },
+      "endnotePositions": {
+        "endOfDocument": "Akhir Dokumen",
+        "endOfSection": "Akhir Bagian"
+      },
+      "numberingOptions": {
+        "continuous": "Berkelanjutan",
+        "restartSection": "Mulai Ulang Setiap Bagian",
+        "restartPage": "Mulai Ulang Setiap Halaman"
+      },
+      "formats": {
+        "decimal": "1, 2, 3, ...",
+        "lowerRoman": "i, ii, iii, ...",
+        "upperRoman": "I, II, III, ..."
+      }
+    }
+  },
+  "comments": {
+    "unknown": "Tidak Diketahui",
+    "addComment": "Tambahkan komentar...",
+    "replyPlaceholder": "Balas atau tambahkan orang lain dengan @",
+    "reopen": null,
+    "resolve": null
+  },
+  "revisions": {
+    "paragraphMarkInserted": "Menyisipkan tanda paragraf",
+    "runPropertiesChanged": "Format teks diubah",
+    "paragraphMarkDeleted": null,
+    "paragraphMarkMovedFrom": null,
+    "paragraphMarkMovedTo": null
+  },
+  "contextMenu": {
+    "ariaLabel": "Menu tindakan AI",
+    "cut": "Potong",
+    "cutShortcut": "Ctrl+X",
+    "copy": "Salin",
+    "copyShortcut": "Ctrl+C",
+    "paste": "Tempel",
+    "pasteShortcut": "Ctrl+V",
+    "delete": "Hapus",
+    "deleteShortcut": "Del",
+    "selectAll": "Pilih Semua",
+    "selectAllShortcut": "Ctrl+A",
+    "editCustomNode": "Edit {label}",
+    "removeCustomNode": "Hapus {label}"
+  },
+  "documentOutline": {
+    "ariaLabel": "Struktur dokumen",
+    "closeAriaLabel": "Tutup struktur dokumen",
+    "closeTitle": "Tutup struktur dokumen",
+    "title": "Struktur Dokumen",
+    "noHeadings": "Tidak ditemukan judul. Tambahkan judul ke dokumen Anda untuk melihatnya di sini."
+  },
+  "viewer": {
+    "pageIndicator": "{current} dari {total}"
+  },
+  "titleBar": {
+    "untitled": "Tanpa Judul",
+    "documentNameAriaLabel": "Nama dokumen",
+    "menuBarAriaLabel": "Bilah menu"
+  },
+  "errors": {
+    "unableToParse": "Tidak Dapat Membaca Dokumen",
+    "somethingWentWrong": "Terjadi kesalahan",
+    "errorDescription": "Terjadi kesalahan saat merender komponen ini. Silakan coba lagi atau hubungi dukungan jika masalah berlanjut.",
+    "errorLabel": "Kesalahan:",
+    "componentStack": "Tumpukan Komponen:",
+    "tryAgain": "Coba Lagi",
+    "showDetails": "Tampilkan detail",
+    "hideDetails": "Sembunyikan detail"
+  },
+  "table": {
+    "insertRowAbove": "Sisipkan Baris di Atas",
+    "insertRowBelow": "Sisipkan Baris di Bawah",
+    "insertColumnLeft": "Sisipkan Kolom di Kiri",
+    "insertColumnRight": "Sisipkan Kolom di Kanan",
+    "deleteRow": "Hapus Baris",
+    "deleteColumn": "Hapus Kolom",
+    "deleteTable": "Hapus Tabel",
+    "mergeCells": "Gabungkan Sel",
+    "splitCell": "Pisahkan Sel",
+    "editingTools": "Alat Pengeditan Tabel",
+    "label": "Tabel:",
+    "cellFillColor": "Warna Isian Sel",
+    "borderColor": "Warna Batas",
+    "borderWidth": "Lebar Batas",
+    "borders": {
+      "all": "Semua Batas",
+      "outside": "Batas Luar",
+      "inside": "Batas Dalam",
+      "none": "Tanpa Batas",
+      "top": "Batas Atas",
+      "bottom": "Batas Bawah",
+      "left": "Batas Kiri",
+      "right": "Batas Kanan",
+      "styleAriaLabel": "Gaya Batas",
+      "tooltip": "Batas"
+    },
+    "moreOptions": "Opsi Tabel Lainnya",
+    "selectTable": "Pilih seluruh tabel",
+    "borderStyles": {
+      "dashed": "Putus-putus",
+      "dotted": "Bertitik",
+      "double": "Ganda",
+      "single": "Solid",
+      "thick": "Tebal",
+      "triple": "Rangkap tiga"
+    },
+    "borderWidths": {
+      "halfPt": "0,5 pt",
+      "oneHalfPt": "1,5 pt",
+      "onePt": "1 pt",
+      "threePt": "3 pt",
+      "twoPt": "2 pt"
+    },
+    "clearCellFill": "Hapus isian sel"
+  },
+  "tableAdvanced": {
+    "verticalAlignment": "Perataan Vertikal",
+    "top": "Atas",
+    "middle": "Tengah",
+    "bottom": "Bawah",
+    "toggleNoWrap": "Aktifkan/Nonaktifkan Bungkus Teks",
+    "toggleHeaderRow": "Aktifkan/Nonaktifkan Baris Header",
+    "distributeColumns": "Sebarkan Kolom Secara Merata",
+    "autoFit": "Sesuaikan Otomatis dengan Isi",
+    "tableProperties": "Properti Tabel...",
+    "tableAlignment": "Perataan Tabel",
+    "alignTableLeft": "Ratakan Tabel ke Kiri",
+    "alignTableCenter": "Ratakan Tabel ke Tengah",
+    "alignTableRight": "Ratakan Tabel ke Kanan"
+  },
+  "imageTransform": {
+    "tooltip": "Putar Gambar",
+    "rotateClockwise": "Putar Searah Jarum Jam",
+    "rotateCounterClockwise": "Putar Berlawanan Arah Jarum Jam",
+    "flipHorizontal": "Balik Horizontal",
+    "flipVertical": "Balik Vertikal"
+  },
+  "imageWrap": {
+    "inline": "Sebaris dengan Teks",
+    "floatLeft": "Teks Mengelilingi (Kiri)",
+    "floatRight": "Teks Mengelilingi (Kanan)",
+    "topAndBottom": "Atas dan Bawah",
+    "behindText": "Di Belakang Teks",
+    "inFrontOfText": "Di Depan Teks",
+    "tooltipPrefix": "Tata Letak: {label}",
+    "menu": {
+      "inLineWithText": "Sebaris dengan Teks",
+      "squareLeft": "Teks Mengelilingi (Kiri)",
+      "squareRight": "Teks Mengelilingi (Kanan)",
+      "ariaLabel": "Opsi tata letak gambar"
+    },
+    "square": "Persegi",
+    "targets": {
+      "behind": "Di belakang teks",
+      "inFront": "Di depan teks",
+      "inline": "Sejajar dengan teks",
+      "square": "Persegi",
+      "squareLeft": "Persegi kiri",
+      "squareRight": "Persegi kanan",
+      "through": "Menembus",
+      "tight": "Rapat",
+      "topAndBottom": "Atas dan bawah"
+    },
+    "through": "Menembus",
+    "tight": "Rapat"
+  },
+  "editor": {
+    "showDocumentOutline": "Tampilkan Kerangka Dokumen",
+    "linkCopied": "Tautan disalin ke papan klip",
+    "fontSubstitutionNotice": "Beberapa font dalam dokumen ini tidak tersedia, jadi font pengganti ditampilkan: {fonts}"
+  },
+  "hyperlinkPopup": {
+    "displayTextPlaceholder": "Teks yang ditampilkan",
+    "urlPlaceholder": "https://example.com",
+    "copyLink": "Salin Tautan",
+    "editLink": "Edit Tautan",
+    "removeLink": "Hapus Tautan",
+    "apply": "Terapkan",
+    "bookmarkTarget": "Menuju ke suatu tempat dalam dokumen ini",
+    "cancel": "Batal",
+    "editTitle": "Edit tautan",
+    "inertTarget": "Tautan ini menunjuk ke tempat yang tidak akan dibuka oleh editor",
+    "insertTitle": "Sisipkan tautan",
+    "openLink": "Buka tautan",
+    "refused": "Tautan tersebut tidak dapat diterapkan. Periksa alamatnya dan coba lagi.",
+    "urlLabel": "URL"
+  },
+  "headerFooter": {
+    "header": "Header",
+    "footer": "Footer",
+    "options": "Opsi",
+    "insertPageNumber": "Sisipkan nomor halaman saat ini",
+    "insertTotalPages": "Sisipkan jumlah total halaman",
+    "chromeAriaLabel": "Pengeditan header dan footer",
+    "firstPageHeader": "Header halaman pertama",
+    "firstPageFooter": "Footer halaman pertama",
+    "evenPageHeader": "Header halaman genap",
+    "evenPageFooter": "Footer halaman genap",
+    "sameAsPrevious": "Sama dengan sebelumnya",
+    "sameAsPreviousHint": "Edit juga berlaku untuk halaman bagian sebelumnya.",
+    "differentFirstPage": "Halaman pertama berbeda",
+    "differentOddEven": "Halaman ganjil dan genap berbeda",
+    "differentOddEvenHint": "Berlaku untuk seluruh dokumen.",
+    "linkToPrevious": "Tautkan ke sebelumnya",
+    "unlinkFromPrevious": "Putus tautan dari sebelumnya",
+    "headerDistance": "Jarak header dari tepi",
+    "footerDistance": "Jarak footer dari tepi",
+    "removeHeader": "Hapus header",
+    "removeFooter": "Hapus footer",
+    "insertSectionPages": "Sisipkan jumlah halaman bagian",
+    "insertPageXofY": "Sisipkan halaman X dari Y"
+  },
+  "image": {
+    "contentMismatch": "Konten gambar tidak cocok dengan tipenya",
+    "decodeFailed": "Gambar tidak dapat didekodekan",
+    "externalResource": "Gambar eksternal tidak dimuat",
+    "invalidResource": "Gambar tidak valid",
+    "missingResource": "Gambar hilang",
+    "nonPictureGraphic": "Grafik tidak didukung ({kind})",
+    "pendingResource": "Memuat gambar",
+    "resourceLimit": "Gambar melebihi batas ukuran",
+    "unsupportedFormat": "Format gambar tidak didukung ({format})"
+  },
+  "imageOverlay": {
+    "handle": {
+      "e": "Ubah ukuran tepi kanan",
+      "n": "Ubah ukuran tepi atas",
+      "ne": "Ubah ukuran sudut kanan atas",
+      "nw": "Ubah ukuran sudut kiri atas",
+      "s": "Ubah ukuran tepi bawah",
+      "se": "Ubah ukuran sudut kanan bawah",
+      "sw": "Ubah ukuran sudut kiri bawah",
+      "w": "Ubah ukuran tepi kiri"
+    },
+    "selection": "Gambar yang dipilih"
+  },
+  "ruler": {
+    "horizontal": "Penggaris Horizontal",
+    "vertical": "Penggaris Vertikal",
+    "firstLineIndent": "Inden Baris Pertama",
+    "leftIndent": "Inden Kiri",
+    "rightIndent": "Inden Kanan",
+    "topMargin": "Margin Atas",
+    "bottomMargin": "Margin Bawah",
+    "hangingIndent": "Indentasi gantung"
+  },
+  "loading": {
+    "label": "Memuat"
+  },
+  "toc": {
+    "refresh": "Perbarui seluruh tabel",
+    "refreshPageNumbers": "Perbarui nomor halaman saja"
+  },
+  "editingMode": {
+    "editing": "Pengeditan",
+    "label": "Mode pengeditan",
+    "editingHint": "Edit dokumen secara langsung",
+    "suggesting": "Saran",
+    "suggestingHint": "Pengeditan menjadi saran",
+    "viewing": "Tampilan",
+    "viewingHint": "Hanya baca, tanpa pengeditan"
+  },
+  "navigation": {
+    "ariaLabel": "Navigasi dokumen",
+    "closeAriaLabel": "Tutup navigasi",
+    "closeTitle": "Tutup navigasi",
+    "find": {
+      "clearAriaLabel": "Hapus pencarian",
+      "counter": "Hasil {current} dari {total}",
+      "counterTruncated": "Hasil {current} dari {total}+",
+      "inputAriaLabel": "Cari di dokumen",
+      "matchCase": "Cocokkan huruf besar/kecil",
+      "nextAriaLabel": "Hasil berikutnya",
+      "noResults": "Tidak ada hasil",
+      "optionsAriaLabel": "Opsi pencarian",
+      "placeholder": "Cari di dokumen",
+      "previousAriaLabel": "Hasil sebelumnya",
+      "resultsAriaLabel": "Hasil pencarian",
+      "searching": "Mencari…",
+      "wholeWord": "Hanya kata utuh",
+      "total": "{total, plural, other {# hasil}}",
+      "totalTruncated": "{total, plural, other {#+ hasil}}"
+    },
+    "headings": {
+      "noHeadings": "Tidak ada judul yang ditemukan. Tambahkan judul ke dokumen untuk melihatnya di sini."
+    },
+    "openAriaLabel": "Buka navigasi",
+    "openTitle": "Navigasi",
+    "tabs": {
+      "find": "Temukan",
+      "headings": "Judul"
+    },
+    "title": "Navigasi"
+  },
+  "contentControl": {
+    "formFill": "Mode isi formulir",
+    "group": "Kontrol konten",
+    "inspector": "Properti kontrol konten",
+    "inspectorPanel": {
+      "alias": "Judul",
+      "bound": "Terikat data",
+      "boundNote": "Kontrol ini terikat ke data eksternal. Pengeditan ditolak.",
+      "empty": "—",
+      "lock": "Kunci",
+      "lockedNote": "Pengeditan konten dikunci pada kontrol ini.",
+      "no": "Tidak",
+      "placeholder": "Placeholder",
+      "tag": "Tag",
+      "title": "Kontrol konten",
+      "type": "Jenis",
+      "yes": "Ya"
+    },
+    "lock": {
+      "contentLocked": "Konten terkunci",
+      "sdtContentLocked": "Kontrol konten dan konten terkunci",
+      "sdtLocked": "Kontrol konten terkunci",
+      "unlocked": "Tidak terkunci"
+    },
+    "remove": "Hapus kontrol konten",
+    "showAll": "Tampilkan batas kontrol konten",
+    "types": {
+      "checkbox": "Kotak centang",
+      "comboBox": "Kotak kombo",
+      "date": "Tanggal",
+      "dropdown": "Daftar drop-down",
+      "picture": "Gambar",
+      "plainText": "Teks biasa",
+      "repeatingSection": "Bagian berulang",
+      "richText": "Teks kaya"
+    }
+  },
+  "notes": {
+    "delete": "Hapus catatan",
+    "convertToEndnote": "Konversi ke catatan akhir",
+    "convertToFootnote": "Konversi ke catatan kaki",
+    "scope": "Terapkan ke",
+    "scopeDocument": "Seluruh dokumen",
+    "scopeSection": "Bagian ini",
+    "previewFallback": "Catatan kaki",
+    "chromeAriaLabel": "Pengeditan catatan",
+    "editingRegion": "{kind} {number}",
+    "footnoteKind": "Catatan kaki",
+    "endnoteKind": "Catatan akhir",
+    "convertAllFootnotes": "Konversi semua catatan kaki ke catatan akhir",
+    "convertAllEndnotes": "Konversi semua catatan akhir ke catatan kaki",
+    "inheritedValue": "(diwarisi)"
+  },
+  "review": {
+    "accept": "Terima",
+    "ariaLabel": "Tinjau",
+    "commentRefused": "Tidak dapat menambahkan komentar",
+    "deleted": "Dihapus",
+    "empty": "Tidak ada perubahan atau komentar",
+    "inserted": "Ditambahkan",
+    "movedFrom": "Dipindahkan dari sini",
+    "movedTo": "Dipindahkan ke sini",
+    "reject": "Tolak",
+    "replaced": "Diganti",
+    "replacedWith": "dengan",
+    "reply": "Balas",
+    "replyRefused": "Tidak dapat mengirim balasan",
+    "showPane": "Tampilkan komentar",
+    "structural": "Struktur dokumen diubah",
+    "deleteComment": "Hapus komentar",
+    "discardChange": "Buang perubahan"
+  },
+  "imageAltText": {
+    "description": "Deskripsi",
+    "panelTitle": "Teks alternatif",
+    "title": "Judul"
+  },
+  "imageInsert": {
+    "errors": {
+      "emptyFile": "File yang dipilih kosong.",
+      "invalidSignature": "File tersebut bukan gambar PNG, JPEG, atau GIF yang didukung.",
+      "oversize": "Gambar melebihi ukuran maksimum yang diizinkan.",
+      "refused": "Gambar tidak dapat disisipkan.",
+      "unsupportedFormat": "Format gambar ini tidak didukung untuk penyisipan."
+    }
+  },
+  "imageProperties": {
+    "crop": "Pangkas",
+    "cropBottom": "Bawah (%)",
+    "cropLeft": "Kiri (%)",
+    "cropRight": "Kanan (%)",
+    "cropTop": "Atas (%)",
+    "errors": {
+      "invalidCrop": "Nilai pangkas harus berupa persentase dari 0 hingga 100.",
+      "invalidDimensions": "Masukkan nilai lebar dan tinggi yang positif.",
+      "refused": "Properti ini tidak dapat diterapkan.",
+      "invalidPosition": "Masukkan nilai posisi horizontal dan vertikal yang valid."
+    },
+    "hyperlink": "Hyperlink",
+    "nonPictureHint": "Pangkas dan reset ukuran asli hanya tersedia untuk gambar.",
+    "resetNaturalSize": "Reset ke ukuran asli",
+    "units": {
+      "points": "pt"
+    },
+    "horizontalOffset": "Offset horizontal",
+    "position": "Posisi",
+    "positionLocked": "Gambar ini tidak dapat dipindahkan.",
+    "positionUnavailable": "Posisi hanya tersedia untuk gambar mengambang.",
+    "relativeToHorizontal": "Relatif terhadap (horizontal)",
+    "relativeToVertical": "Relatif terhadap (vertikal)",
+    "verticalOffset": "Offset vertikal"
+  }
+}
