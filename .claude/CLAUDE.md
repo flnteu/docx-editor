@@ -43,7 +43,8 @@ shaper twice and miss every identity-keyed cache, quietly. So `core` is external
 to `react` (not inlined) and a **peer** of both `react` and `pro`, which makes the
 package manager resolve one and say so at install when it cannot. Both adapters
 assert their own dependency shape:
-`packages/{react,pro}/src/__tests__/package-dependencies.test.ts`. Never move
+`packages/react/test/package-dependencies.test.ts` and
+`packages/pro/src/__tests__/package-dependencies.test.ts`. Never move
 `core` back to a regular `dependency`.
 
 Inside `core`, each directory is a guarded lane with a declared dependency edge
@@ -243,9 +244,8 @@ clipboard or print:
 grep -rnE "innerHTML|outerHTML|insertAdjacentHTML|document\.write|window\.open\(|\.href\s*=|font-family:.*\$\{" packages --include="*.ts" --include="*.tsx" --include="*.vue" | grep -viE "test|\.spec\."
 ```
 
-Fix sibling sinks when you fix one. `openPrintWindow` still builds its popup via
-`document.write` with an unescaped `title`/`content` — a known sink to harden,
-not a reference.
+Fix sibling sinks when you fix one. The automation lane is sink-free by test
+(`automation/__tests__/automation-lane-safety.test.ts`); do not reintroduce one.
 
 ## i18n
 
