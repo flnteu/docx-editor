@@ -45,8 +45,8 @@ state.
 object identity), so two copies do not crash — they load the shaper twice and miss every cache,
 quietly. `core` is therefore external to `react` (not inlined) and a **peer** of both `react` and
 `pro`, which makes the package manager resolve one and say so at install when it cannot. Both
-adapters assert their own dependency shape:
-`packages/{react,pro}/src/__tests__/package-dependencies.test.ts`. Never move `core` back to a
+adapters assert their own dependency shape: `packages/react/test/package-dependencies.test.ts`
+and `packages/pro/src/__tests__/package-dependencies.test.ts`. Never move `core` back to a
 regular `dependency`.
 
 Inside `core`, each directory is a guarded lane with a declared dependency edge and
@@ -144,9 +144,8 @@ disabledReason}`, `useEditorEvent`, `useFontFamily`.
   steals the caret.
 - Exported names describe capabilities, never engine internals (no "tree").
 
-Not built yet: structural table ops (insert row/column, merge),
-comments/tracked-changes derivation, caret scroll-into-view,
-zoom-without-remount, the Vue twin of provider/hooks.
+Not built yet: the Vue twin of provider/hooks (`packages/vue/src` has `useEditorSnapshot`
+and no Root/Viewport/Content, measured 2026-09-14).
 
 ## Verify
 
@@ -160,10 +159,12 @@ bun run i18n:validate
 openspec validate typed-ooxml-paragraph-editor --strict
 ```
 
-- `bun run lint`'s only errors are the `max-lines` caps: 1000 lines for most files, 2900 for the
-  handful already past it. Nothing else catches them, so adding to a large file passes typecheck
-  and the whole suite and fails CI. Extract; do not raise the cap. It covers `examples/*/src` as
-  well as `packages/*/src` — the demos hit the same cap.
+- `bun run lint` is the only gate that sees the `max-lines` caps: 1000 lines by default, with
+  per-file ceilings from 1060 to 3500 for files already past it (`grep -c "'max-lines'"
+  eslint.config.js` counts the entries; 24 on 2026-09-14). Nothing else catches them, so adding
+  to a large file passes typecheck and the whole suite and fails CI. Extract; do not raise the
+  cap. It covers `examples/*/src` and `examples/*/app` as well as `packages/*/src` — the demos
+  hit the same cap.
 - `bun run test` shards the suite one process per file across a worker pool
   (`scripts/test/run-parallel.mjs`, `--jobs N` to pin the width). That is also
   what CI runs. `bun test` still works and is the one to reach for when you want
@@ -172,9 +173,10 @@ openspec validate typed-ooxml-paragraph-editor --strict
 - A file that leaves state on `document` can only be caught by the serial run —
   per-file processes hide it. Scope DOM queries to the container you mounted.
 - `git commit --no-verify` is fine locally, but `bun run format` and `bun run lint` are not
-  optional — the hook runs both, they are the two gates nothing else covers, and `bun run format`
-  is the last thing before a push. Run the other relevant scoped checks too, and report a bypassed
-  failing gate instead of calling it passing.
+  optional — the hook runs both (`.husky/pre-commit`, alongside typecheck, license headers and
+  `api:check`), CI runs both again, neither typecheck nor the test suite catches what they catch,
+  and `bun run format` is the last thing before a push. Run the other relevant scoped checks too,
+  and report a bypassed failing gate instead of calling it passing.
 - Compare the run against the non-clean baseline in the active change.
 
 ## Parity and styling
@@ -198,8 +200,9 @@ API Extractor snapshots live in `docs/api/<pkg-slug>/<entry>.api.md`; CI runs
 `@public` symbol: tag it in TSDoc, rebuild, re-extract, commit. `bun run
 docs:json` generates consumer JSON (gitignored, CI smoke test).
 
-Vue composables must declare a named `Use<Name>Return` interface and annotate the
-return type, or core's internal types leak into the snapshot.
+Composables and hooks must declare a named return interface (`Use<Name>Result`, the React
+hooks' convention) and annotate the return type, or core's internal types leak into the
+snapshot.
 
 ## Security — untrusted input
 
@@ -243,9 +246,7 @@ clipboard or print:
 grep -rnE "innerHTML|outerHTML|insertAdjacentHTML|document\.write|window\.open\(|\.href\s*=|font-family:.*\$\{" packages --include="*.ts" --include="*.tsx" --include="*.vue" | grep -viE "test|\.spec\."
 ```
 
-Fix sibling sinks when you fix one. `openPrintWindow` still builds its popup via
-`document.write` with an unescaped `title`/`content` — a known sink to harden,
-not a reference.
+Fix sibling sinks when you fix one.
 
 ## i18n
 
@@ -318,7 +319,8 @@ Every code PR gets a changeset (`bun changeset`, or a correct hand-written
 
 - The frontmatter package name must exactly match a published package and the
   bump must be `patch`/`minor`/`major`. A wrong name crashes the Release
-  workflow — copy it from an existing changeset.
+  workflow — copy it from the package's `package.json#name` (`.changeset/` holds only
+  `README.md` and `config.json` between releases, so there is often no example to copy).
 - Published packages are one fixed group: declare one bump, the rest follow.
 - Default `patch`; `minor` for additive public API; `major` for breaks.
 - The summary lands verbatim in CHANGELOG: consumer-facing, what changed not how,
