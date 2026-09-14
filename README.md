@@ -1,46 +1,69 @@
 <!-- ============================================================== -->
-<!-- FluentaOne fork notice — keep this block on top when syncing   -->
+<!-- FluentaOne fork notice - keep this block on top when syncing   -->
 <!-- from upstream; everything below it is upstream's README.       -->
 <!-- ============================================================== -->
 
 > [!IMPORTANT]
-> **This is `flnteu/docx-editor` — FluentaOne's vendor fork of
-> [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor). It is not
-> a development fork: no product code is written here.**
+> **This is `flnteu/docx-editor`, FluentaOne's vendor fork of
+> [`eigenpal/docx-editor`](https://github.com/eigenpal/docx-editor). It is not a
+> development fork: no product code is written here.** Do not open feature PRs
+> here; upstream contributions go to `eigenpal/docx-editor` and need their CLA.
 >
-> FluentaOne's web app embeds the upstream `@docx-editor.dev/core` /
-> `@docx-editor.dev/react` npm packages as the document editor behind the
-> docedit feature (document templates, document-editor task views). Upstream
-> renamed these at 2.x — they were `@eigenpal/docx-editor-core` /
-> `-react` before. This fork exists for two reasons, per SPIKE-DOCEDIT-001 in
-> `flnt-docs-central`
-> (`architecture/spikes/SPIKE-DOCEDIT-001-eigenpal-evaluation.md`):
+> **Why it exists**, per
+> [SPIKE-DOCEDIT-001](https://github.com/flnteu/flnt-docs-central/blob/main/architecture/spikes/SPIKE-DOCEDIT-001-eigenpal-evaluation.md)
+> and RFC-DOCEDIT-001 section 6.1:
 >
-> 1. **Source escrow** — a copy of the source we depend on, under our own
->    org, in case upstream disappears, goes private, or changes license. It
->    lets us build a patched version ourselves if we ever have to.
-> 2. **Supply-chain gate** — `.github/workflows/flnteu-supply-chain.yml`
->    independently verifies what we ship: `bun audit` scoped to the
->    published-package dependency closure (`.github/flnteu/audit-scope.mjs`),
->    a license allowlist, and a reproducible build + typecheck of
->    `packages/*`. This gate must be green before a synced upstream version
->    becomes the FluentaOne private-registry source (prd promotion gate).
+> 1. **Source escrow.** A copy of the source we depend on, in our own org, so we
+>    can still build a patched version if upstream disappears, goes private, or
+>    changes its license.
+> 2. **Supply-chain gate.** `.github/workflows/flnteu-supply-chain.yml` audits
+>    what we would ship: `bun audit` over the published-package dependency
+>    closure (`.github/flnteu/audit-scope.mjs`), a license allowlist, a
+>    reproducible build plus typecheck of `packages/*`, and an owner guard. It
+>    must be green before a synced version becomes a FluentaOne source.
 >
-> **Day to day:** dev/stg consume the packages from the public npm registry;
-> the fork is synced and tagged (`v<upstream-version>-flnteu`) when we adopt a
-> new upstream version. **`gh repo sync` does not work on this fork** and
-> never will: upstream re-initialized its git history on 2026-07-20, so the
-> two repositories share no commit at all (`git merge-base origin/main
-upstream/main` exits 1). The working sync procedure — and the recipe for
-> consuming a tag from npm — is in
-> [FLNTEU-README.md](FLNTEU-README.md); follow it instead.
+> **Synced to upstream 2.5.0**, tag `v2.5.0-flnteu` (DEV-2291). Upstream renamed
+> the packages at 2.x: `@docx-editor.dev/core` and `@docx-editor.dev/react` were
+> `@eigenpal/docx-editor-core` and `-react` before that.
 >
-> Fork-local files are confined to `README.md` (this notice),
-> `FLNTEU-README.md`, `.github/workflows/flnteu-*.yml`, `.github/flnteu/`,
-> `.claude/CLAUDE.md` + `.claude/settings.json`, and the CLA workflow's fork
-> guard — everything else tracks upstream to keep syncs conflict-free. Do not
-> open feature PRs here; upstream contributions go to
-> `eigenpal/docx-editor` (and require their CLA).
+> **What FluentaOne ships is older than this fork.** Measured 2026-09-14 on
+> `flnt-web-app` `develop`: the docedit feature (document templates, the
+> document-editor task view) imports `@eigenpal/docx-editor-react` **1.9.0**,
+> installed from tarballs committed in `flnt-web-app/vendor/eigenpal/`, not from
+> the public npm registry and not from this fork. No repo in the workspace
+> depends on a `@docx-editor.dev/*` package, and `flnt-svc-doc-edit` does not
+> embed the editor at all; it uses ProseMirror, Yjs and `docx` directly. Moving
+> the web app to 2.x is a rename plus an API migration, not a version bump, and
+> the private-registry end state named in RFC section 6.1 is not built yet.
+>
+> **Bun builds this repo; npm cannot.** Packages depend on each other with
+> `workspace:*` and the lockfile is `bun.lock`. Measured here with npm 11.17.0:
+> `npm install` stops at `ERESOLVE` on an eslint peer conflict, and with
+> `--legacy-peer-deps` it stops at `EUNSUPPORTEDPROTOCOL Unsupported URL Type
+> "workspace:"`. Use `bun install`. A git dependency on this repo fails for the
+> same reason, so a consuming project takes packed tarballs instead:
+> `bun run build:packages`, then `npm pack` each `packages/*` by absolute path.
+> Re-run that evidence with `bash .github/flnteu/npm-consumability-probe.sh`.
+>
+> **Syncing an upstream bump** is a deliberate tree replacement, delivered as a
+> branch and a PR, never a push to `main`. `gh repo sync` does not help: `main`
+> carries the fork overlay, so it cannot fast-forward, and `--force` would erase
+> that overlay. Take upstream's tree wholesale, re-apply the fork-local files on
+> top of upstream's versions of them rather than replaying the old diff, tag
+> `v<upstream-version>-flnteu`, and require the gate to be green before the tag
+> becomes a FluentaOne source. The commands, and the tarball recipe for
+> consumers, are in [FLNTEU-README.md](FLNTEU-README.md).
+>
+> **Fork-local files** are 18 paths against upstream v2.5.0 (`git diff
+> --name-only c07574c3 HEAD`, measured 2026-09-14): this notice,
+> `FLNTEU-README.md`, `.github/flnteu/` and `flnteu-supply-chain.yml`, `.claude/`
+> (`CLAUDE.md`, moved here from the repo root, plus `settings.json`), owner
+> guards or a repointed `runs-on` in five upstream workflows, audit `overrides`
+> and `resolutions` in `package.json` with the matching `bun.lock`, and small
+> edits to `.gitignore` and `CONTRIBUTING.md`. Everything else tracks upstream to
+> keep syncs conflict-free, `.claude/skills/openspec-*` and
+> `.claude/commands/opsx` included: those are upstream's own OpenSpec workflow,
+> not FluentaOne scaffolding, and they stay.
 
 <p align="center">
   <a href="https://www.docx-editor.dev/">
