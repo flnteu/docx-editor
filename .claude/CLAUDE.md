@@ -3,6 +3,11 @@
 WYSIWYG editor and rendering engine for DOCX. Output must match MS Word: fonts,
 theme colors, styles, tables, headers/footers, section layout.
 
+Vendored fork of `eigenpal/docx-editor`, client-side only. **Bun-native monorepo** — `bun.lock`,
+`bunfig.toml`, `workspace:*` deps: install and run every script with `bun` / `bun run`, npm-based
+tooling does not drive this workspace. PRs target `main`; there is no `develop` branch. Platform
+conventions from the FluentaOne workspace do not apply here.
+
 ## Communication
 
 Write all replies in ASD-STE100 Simplified Technical English.
@@ -23,32 +28,30 @@ change. For example, write `packages/core/src/layout/semantic-layout.ts` and
 
 One engine. Thin chrome on top.
 
-| Package       | What                                                                                                                                                                                           | Status                         |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `core`        | **The engine.** `store/` (canonical tree, ops, OPC read/write), `layout/` (DOM-free), `output/` (paint), `editor/` (facade, surface, chrome registry), `contracts/`, `binding/`, `automation/` | published, external to `react` |
-| `react`       | The adapter: provider + hooks, holds no editing state                                                                                                                                          | published                      |
-| `i18n`        | Shared strings                                                                                                                                                                                 | published                      |
-| `editor-api`  | `DocxEditor` automation object model, headless/server                                                                                                                                          | published, Pro license         |
-| `pro`         | Review module (comments, tracked changes) + custom nodes, as `EditorModule`s                                                                                                                   | published, Pro license         |
-| `fonts`       | Metric-compatible substitutes for Word's defaults                                                                                                                                              | published                      |
-| `vue`, `nuxt` | WIP, not shipping                                                                                                                                                                              | private                        |
+| Package | What | Status |
+|---|---|---|
+| `core` | **The engine.** `store/` (canonical tree, ops, OPC read/write), `layout/` (DOM-free), `output/` (paint), `editor/` (facade, surface, chrome registry), `contracts/`, `binding/`, `automation/` | published, external to `react` |
+| `react` | The adapter: provider + hooks, holds no editing state | published |
+| `i18n` | Shared strings | published |
+| `editor-api` | `DocxEditor` automation object model, headless/server | published, Pro license |
+| `pro` | Review module (comments, tracked changes) + custom nodes, as `EditorModule`s | published, Pro license |
+| `fonts` | Metric-compatible substitutes for Word's defaults | published |
+| `vue`, `nuxt` | WIP, not shipping | private |
 
 React is the only real adapter today. Parity rules below are the target, not the
 state.
 
-**The engine must resolve to ONE copy.** It holds module-level state — the
-HarfBuzz shaper and its cache budget, the grapheme boundary strategy, layout
-caches keyed by object identity. Two copies in a tree do not crash; they load the
-shaper twice and miss every identity-keyed cache, quietly. So `core` is external
-to `react` (not inlined) and a **peer** of both `react` and `pro`, which makes the
-package manager resolve one and say so at install when it cannot. Both adapters
-assert their own dependency shape:
-`packages/{react,pro}/src/__tests__/package-dependencies.test.ts`. Never move
-`core` back to a regular `dependency`.
+**The engine must resolve to ONE copy.** It holds module-level state (the shaper, caches keyed by
+object identity), so two copies do not crash — they load the shaper twice and miss every cache,
+quietly. `core` is therefore external to `react` (not inlined) and a **peer** of both `react` and
+`pro`, which makes the package manager resolve one and say so at install when it cannot. Both
+adapters assert their own dependency shape: `packages/react/test/package-dependencies.test.ts`
+and `packages/pro/src/__tests__/package-dependencies.test.ts`. Never move `core` back to a
+regular `dependency`.
 
-Inside `core`, each directory is a guarded lane with a declared dependency edge
-and environment (`store` and `layout` are DOM-free, `binding` is the only
-PM-aware one). The DAG is machine-readable in
+Inside `core`, each directory is a guarded lane with a declared dependency edge and
+environment (`store` and `layout` are DOM-free, `binding` is the only PM-aware
+one). The DAG is machine-readable in
 `packages/core/src/__tests__/core-lane-graph.ts` and documented in
 `docs/architecture/production-engine-packages.md`. A lane taking a new dependency
 edits that DAG.
@@ -90,11 +93,8 @@ enforced by `store/__tests__/prosemirror-isolation.test.ts`.
   header-row repeats, vMerge, clamped gridSpan. Headers/footers laid out once per
   variant at flow height, attached per page. Incremental: per-block cache keys +
   flow checkpoints + convergence; a no-change pass returns previous pages by
-  identity. Paragraph fidelity resolves through `layout/style-cascade.ts`:
-  `w:spacing` line rules, first-line/hanging indents, `w:contextualSpacing`,
-  `w:pBdr` on all edges, tab stops and leaders, `w:vanish` (not measured, not
-  painted), list markers from `numbering.xml`, table styles via `basedOn` gated
-  by `w:tblLook`.
+  identity. Paragraph fidelity resolves through `layout/style-cascade.ts` — read
+  that file for the `w:*` properties it covers rather than trusting a list here.
 - **Selection** — maps only through `data-paragraph-id`/`data-start`. Page
   furniture is `contenteditable=false` + `[data-docx-hf]`, excluded from
   selection.
@@ -144,9 +144,8 @@ disabledReason}`, `useEditorEvent`, `useFontFamily`.
   steals the caret.
 - Exported names describe capabilities, never engine internals (no "tree").
 
-Not built yet: structural table ops (insert row/column, merge),
-comments/tracked-changes derivation, caret scroll-into-view,
-zoom-without-remount, the Vue twin of provider/hooks.
+Not built yet: the Vue twin of provider/hooks (`packages/vue/src` has `useEditorSnapshot`
+and no Root/Viewport/Content, measured 2026-09-14).
 
 ## Verify
 
@@ -160,10 +159,12 @@ bun run i18n:validate
 openspec validate typed-ooxml-paragraph-editor --strict
 ```
 
-- `bun run lint`'s only errors are the `max-lines` caps: 1000 lines for most files, 2900 for the
-  handful already past it. Nothing else catches them, so adding to a large file passes typecheck
-  and the whole suite and fails CI. Extract; do not raise the cap. It covers `examples/*/src` as
-  well as `packages/*/src` — the demos hit the same cap.
+- `bun run lint` is the only gate that sees the `max-lines` caps: 1000 lines by default, with
+  per-file ceilings from 1060 to 3500 for files already past it (`grep -c "'max-lines'"
+  eslint.config.js` counts the entries; 24 on 2026-09-14). Nothing else catches them, so adding
+  to a large file passes typecheck and the whole suite and fails CI. Extract; do not raise the
+  cap. It covers `examples/*/src` and `examples/*/app` as well as `packages/*/src` — the demos
+  hit the same cap.
 - `bun run test` shards the suite one process per file across a worker pool
   (`scripts/test/run-parallel.mjs`, `--jobs N` to pin the width). That is also
   what CI runs. `bun test` still works and is the one to reach for when you want
@@ -172,10 +173,11 @@ openspec validate typed-ooxml-paragraph-editor --strict
 - A file that leaves state on `document` can only be caught by the serial run —
   per-file processes hide it. Scope DOM queries to the container you mounted.
 - `git commit --no-verify` is fine locally, but `bun run format` and `bun run lint` are not
-  optional — the hook runs both, and they are the two gates nothing else covers. Run the other
-  relevant scoped checks too, and report a bypassed failing gate instead of calling it passing.
+  optional — the hook runs both (`.husky/pre-commit`, alongside typecheck, license headers and
+  `api:check`), CI runs both again, neither typecheck nor the test suite catches what they catch,
+  and `bun run format` is the last thing before a push. Run the other relevant scoped checks too,
+  and report a bypassed failing gate instead of calling it passing.
 - Compare the run against the non-clean baseline in the active change.
-- `bun run format` before pushing.
 
 ## Parity and styling
 
@@ -198,8 +200,9 @@ API Extractor snapshots live in `docs/api/<pkg-slug>/<entry>.api.md`; CI runs
 `@public` symbol: tag it in TSDoc, rebuild, re-extract, commit. `bun run
 docs:json` generates consumer JSON (gitignored, CI smoke test).
 
-Vue composables must declare a named `Use<Name>Return` interface and annotate the
-return type, or core's internal types leak into the snapshot.
+Composables and hooks must declare a named return interface (`Use<Name>Result`, the React
+hooks' convention) and annotate the return type, or core's internal types leak into the
+snapshot.
 
 ## Security — untrusted input
 
@@ -243,9 +246,7 @@ clipboard or print:
 grep -rnE "innerHTML|outerHTML|insertAdjacentHTML|document\.write|window\.open\(|\.href\s*=|font-family:.*\$\{" packages --include="*.ts" --include="*.tsx" --include="*.vue" | grep -viE "test|\.spec\."
 ```
 
-Fix sibling sinks when you fix one. `openPrintWindow` still builds its popup via
-`document.write` with an unescaped `title`/`content` — a known sink to harden,
-not a reference.
+Fix sibling sinks when you fix one.
 
 ## i18n
 
@@ -271,53 +272,41 @@ updates both.
 
 **Docs prose follows the
 [Google developer documentation style guide](https://developers.google.com/style)**
-([highlights](https://developers.google.com/style/highlights) is the summary):
+([highlights](https://developers.google.com/style/highlights) is the summary; the
+[word list](https://developers.google.com/style/word-list) settles spelling and
+usage). The rules that bite here:
 
-- [Voice and tone](https://developers.google.com/style/tone) — conversational
-  and friendly, not frivolous. No buzzwords, idioms, exclamation marks, or
-  pop-culture references. In procedures, never "simply", "easy", "just",
-  "quickly", or "please".
-- Grammar — [second person](https://developers.google.com/style/person)
-  ("you", not "we"), [active voice](https://developers.google.com/style/voice),
-  [present tense](https://developers.google.com/style/tense), American
+- Conversational and friendly, not frivolous. No buzzwords, idioms, exclamation
+  marks, or pop-culture references. In procedures, never "simply", "easy",
+  "just", "quickly", or "please".
+- Second person ("you", not "we"), active voice, present tense, American
   spelling. State the condition before the instruction ("If X, click Y").
-- [Timeless](https://developers.google.com/style/timeless-documentation) — no
-  "currently", "new", "soon", "as of this writing". Document what the product
-  does; never pre-announce features.
-- [Headings](https://developers.google.com/style/headings) — sentence case in
-  all titles, headings, and navigation.
-- [Lists](https://developers.google.com/style/lists) — numbered for sequences,
-  bulleted otherwise; parallel structure; serial (Oxford) commas.
-- [Text formatting](https://developers.google.com/style/text-formatting) —
-  code font for filenames, identifiers, console output, and placeholders; bold
+- Timeless — no "currently", "new", "soon", "as of this writing". Document what
+  the product does; never pre-announce features.
+- Sentence case in all titles, headings, and navigation.
+- Code font for filenames, identifiers, console output, and placeholders; bold
   for UI elements only; italics only for term definitions and work titles.
-- [Link text](https://developers.google.com/style/link-text) — a descriptive
-  phrase that matches the target's title. Never "click here", "this article",
-  or a bare URL. Introduce with "For more information, see …".
-- [Code samples](https://developers.google.com/style/code-samples) — introduce
-  each sample with text; wrap lines at 80 characters; mark omissions with a
-  comment, not an ellipsis.
-- [Accessibility](https://developers.google.com/style/accessibility) — proper
-  heading hierarchy, alt text on every image, no images of text or terminal
-  output, no directional language ("above", "below"), meaning never carried by
-  color alone.
-- [Global audience](https://developers.google.com/style/translation) — short
-  sentences (26 words or fewer), one idea per sentence, acronyms defined on
-  first use, no culturally specific references.
-- The [word list](https://developers.google.com/style/word-list) settles
-  spelling and usage; use unambiguous
-  [dates and times](https://developers.google.com/style/dates-times).
+- Link text is a descriptive phrase matching the target's title — never "click
+  here", "this article", or a bare URL. Introduce with "For more information,
+  see …".
+- Numbered lists for sequences, bulleted otherwise; parallel structure; serial
+  (Oxford) commas. Introduce every code sample with text, wrap lines at 80
+  characters, and mark omissions with a comment, not an ellipsis.
+- Accessible — heading hierarchy, alt text on every image, no images of text or
+  terminal output, no directional language ("above", "below"), meaning never
+  carried by color alone.
+- Global audience — sentences of 26 words or fewer, one idea each, acronyms
+  defined on first use, no culturally specific references.
 
 **Two `meta.json` must agree.** The `"root": true`
 `docs/site/content/meta.json` drives the sidebar with full paths; each subfolder
 has its own. Register a new page in BOTH, or it is URL-reachable but missing from
 the sidebar.
 
-**Diagrams are mermaid**, in a ` ```mermaid ` fence — not ASCII box drawing.
-ASCII renders at whatever the code block's font does, wraps on a phone, and is
-unreadable to a screen reader; mermaid scales and picks up the site theme. Keep
-it to the shape being explained (a flow, a sequence, a state machine); a diagram
-that just restates the prose earns nothing.
+**Diagrams are mermaid**, in a ` ```mermaid ` fence — not ASCII box drawing,
+which wraps on a phone and is unreadable to a screen reader. Keep it to the shape
+being explained (a flow, a sequence, a state machine); a diagram that just
+restates the prose earns nothing.
 
 OOXML reference: `reference/quick-ref/wordprocessingml.md`, `themes-colors.md`;
 schemas in `reference/ecma-376/part1/schemas/`. PDFs are gitignored — run `bun
@@ -330,7 +319,8 @@ Every code PR gets a changeset (`bun changeset`, or a correct hand-written
 
 - The frontmatter package name must exactly match a published package and the
   bump must be `patch`/`minor`/`major`. A wrong name crashes the Release
-  workflow — copy it from an existing changeset.
+  workflow — copy it from the package's `package.json#name` (`.changeset/` holds only
+  `README.md` and `config.json` between releases, so there is often no example to copy).
 - Published packages are one fixed group: declare one bump, the rest follow.
 - Default `patch`; `minor` for additive public API; `major` for breaks.
 - The summary lands verbatim in CHANGELOG: consumer-facing, what changed not how,
@@ -341,25 +331,14 @@ Every code PR gets a changeset (`bun changeset`, or a correct hand-written
 Never push the `chore: release` commit by hand, delete `.changeset/*.md` outside
 `changeset version`, or hand-edit `CHANGELOG.md` / `package.json#version`.
 
-**Third-party notices.** Every publishable package ships a
-`THIRD_PARTY_NOTICES.md` reproducing the license of each package esbuild inlines
-into its bundles, because MIT/Apache-2.0 both require the notice to travel with
-the copy. Only genuinely inlined code counts: core declares fast-xml-parser,
-fflate and prosemirror-\* as real `dependencies` with no `noExternal`, so esbuild
-leaves them external, npm installs them with their own licenses, and every
-package currently generates an empty notice. An empty run is the correct result
-here, not a broken generator — what would be wrong is a bundled dependency
-missing its text, which fails the run outright. The Release
-workflow generates it from `dist/metafile-*.json` just before publishing; the
-file is gitignored, so regenerate with `bun run build:packages && bun run
-notices:generate`. `notices:check` compares against the CURRENT `dist/`, so it
-only means anything right after a build and reports "missing" on a clean tree by
-design. The run is all-or-nothing: a tsup config that stops emitting `metafile:
-true`, a bundled dependency with no license text, or a `files` array that forgets
-the notice fails it — and a failure deletes the notices rather than shipping a
-stale one. A publishable package that is not a tsup bundle has no metafile and
-fails until it gets an attribution path; `packages/fonts` carries OFL text in
-`licenses/`, which no metafile can see.
+**Third-party notices.** Every publishable package ships a gitignored
+`THIRD_PARTY_NOTICES.md`, which the Release workflow generates from
+`dist/metafile-*.json` just before publishing; regenerate locally with `bun run
+build:packages && bun run notices:generate`. Two results look like bugs and are
+not: every package currently generates an **empty** notice (nothing is actually
+inlined), and `notices:check` reports "missing" on a clean tree because it
+compares against the CURRENT `dist/`. The run is all-or-nothing and a failure
+deletes the notices rather than shipping a stale one.
 
 ## Conventions
 
@@ -381,20 +360,19 @@ dev` → `http://localhost:5173/`. Live demo `http://docx-editor.dev/editor`.
 - **Icons** — inline SVG (Material Symbol paths), not a font. A missing name
   renders raw text.
 
-## Claude Code scaffolding (DEV-1256)
+## Claude Code scaffolding
 
 Workflow guidance comes from the **fluenta plugin marketplace**
 (`github.com/flnteu/flnt-claude-plugins`), not from this repo.
-`.claude/settings.json` declares the marketplace and enables `clickup-tasks`, `security-audit`, `code-quality`, `git-workflow`, `docs-maintenance`, `architecture` —
-Claude Code prompts you to install them on first open. Skills are all
-`flnt-` prefixed (type `/flnt` to list them). Do not recreate
-`.claude/skills/`, `.claude/agents/`, `.claude/commands/`,
-`.claude/knowledge/`, `.claude/rules/`, or `.mcp.json` here (DEV-1218).
+`.claude/settings.json` declares the marketplace and the enabled plugins; Claude
+Code prompts you to install them on first open, and the skills are all `flnt-`
+prefixed (type `/flnt` to list them). Do not recreate `.claude/agents/`,
+`.claude/knowledge/`, `.claude/rules/` or `.mcp.json` here.
 
-Deliberately kept from upstream: `.claude/skills/openspec-*` and
-`.claude/commands/opsx` drive this repo's own OpenSpec workflow and have no
-marketplace equivalent.
+**Deliberate exception — do not delete in a `.claude/` cleanup:**
+`.claude/skills/openspec-*` and `.claude/commands/opsx` drive this repo's own
+OpenSpec workflow and have no marketplace equivalent.
 
-(The former generator repo `flnt-ai-config`, whose `repo-map.yaml` skip list
-this note used to cite, was archived on 2026-08-11; every repo now
-self-manages its `.claude/`, so there is nothing left to opt out of.)
+The story behind the rules above (why one copy of the engine, why empty notices,
+why this repo keeps its own skills) is in the shared agent memory, project
+`flnt`: `search_notes` for `docx-editor`.
