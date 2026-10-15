@@ -120,7 +120,7 @@
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
     "vite": "^8.1.5",
-    "vue": "^3.5.29",
+    "vue": "^3.5.43",
     "vue-eslint-parser": "^10.4.0"
   },
   "keywords": [
@@ -143,32 +143,36 @@
     "access": "public"
   },
   "overrides": {
-    "prosemirror-view": "1.41.8",
+    "prosemirror-view": "1.42.6",
     "prosemirror-state": "1.4.4",
-    "prosemirror-model": "1.25.4",
-    "prosemirror-transform": "1.12.0",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-transform": "1.12.2",
     "fast-uri": "^3.1.6",
     "nanoid": "^3.3.18",
     "postcss": "^8.5.18",
     "vite": "^8.1.5",
     "ws": "^8.21.0",
     "js-yaml": "^4.3.2",
-    "brace-expansion": "^5.0.9",
-    "browserslist": "^4.28.7"
+    "brace-expansion": "^5.0.12",
+    "browserslist": "^4.28.7",
+    "source-map-js": "^1.2.2",
+    "vue": "^3.5.43"
   },
   "resolutions": {
-    "prosemirror-view": "1.41.8",
+    "prosemirror-view": "1.42.6",
     "prosemirror-state": "1.4.4",
-    "prosemirror-model": "1.25.4",
-    "prosemirror-transform": "1.12.0",
+    "prosemirror-model": "1.25.12",
+    "prosemirror-transform": "1.12.2",
     "fast-uri": "^3.1.6",
     "nanoid": "^3.3.18",
     "postcss": "^8.5.18",
     "vite": "^8.1.5",
     "ws": "^8.21.0",
     "js-yaml": "^4.3.2",
-    "brace-expansion": "^5.0.9",
-    "browserslist": "^4.28.7"
+    "brace-expansion": "^5.0.12",
+    "browserslist": "^4.28.7",
+    "source-map-js": "^1.2.2",
+    "vue": "^3.5.43"
   },
   "dependencies": {
     "prosemirror-commands": "^1.7.1",
