@@ -27,10 +27,20 @@
 //   bun audit --json > audit.json || true
 //   bun .github/flnteu/audit-scope.mjs audit.json bun.lock [--ignore=GHSA-...]...
 //
-// Exit 1 iff an in-scope high/critical advisory is not on the ignore list.
+// Accepted risks live in audit-ignore.json next to this script, one entry per
+// advisory: { id, package, reason, decision, expires }. An entry matches only
+// its own advisory id on its own package. It stops applying ON its `expires`
+// date (YYYY-MM-DD, UTC), and from then on the gate fails until someone
+// re-reviews the risk: that date is the re-review, not a grace period. A
+// malformed entry fails the gate rather than being skipped.
+// FLNTEU_AUDIT_IGNORE_FILE points the script at another file (the tests).
+//
+// Exit 1 iff an in-scope high/critical advisory is not on the ignore list, or
+// an ignore entry is expired or malformed.
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const ignores = new Set(
@@ -41,6 +51,28 @@ if (!auditPath || !lockPath) {
   console.error('usage: audit-scope.mjs <audit.json> <bun.lock> [--ignore=GHSA-...]...');
   process.exit(2);
 }
+
+const ignoreFilePath =
+  process.env.FLNTEU_AUDIT_IGNORE_FILE ?? join(dirname(fileURLToPath(import.meta.url)), 'audit-ignore.json');
+const today = new Date().toISOString().slice(0, 10);
+// A real calendar day in YYYY-MM-DD: the shape alone lets 2026-11-31 through.
+const isRealDate = (d) => {
+  const t = Date.parse(`${d}T00:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === d;
+};
+const fileIgnores = new Map(); // GHSA id -> entry
+const badIgnores = [];
+for (const entry of existsSync(ignoreFilePath) ? (JSON.parse(readFileSync(ignoreFilePath, 'utf8')).ignore ?? []) : []) {
+  const missing = ['id', 'package', 'reason', 'decision', 'expires'].filter((k) => !entry?.[k]);
+  if (missing.length || !isRealDate(entry.expires)) {
+    badIgnores.push(`${entry?.id ?? '(no id)'}: malformed, missing or invalid ${missing.join(', ') || 'expires'}`);
+  } else if (entry.expires <= today) {
+    badIgnores.push(`${entry.id} (${entry.package}): expired ${entry.expires}, re-review the accepted risk`);
+  } else {
+    fileIgnores.set(entry.id, entry);
+  }
+}
+const isIgnored = (pkg, id) => ignores.has(id) || fileIgnores.get(id)?.package === pkg;
 
 // bun.lock is JSONC (trailing commas). Strip them; the file contains no
 // comments and no string literal ever ends with `,` directly before a
@@ -140,7 +172,10 @@ for (const [pkg, advisories] of Object.entries(audit)) {
     if (!BLOCKING.has(adv.severity)) continue;
     const row = `${pkg} ${adv.severity} ${ghsaOf(adv)} — ${adv.title}`;
     if (!inScope.has(pkg)) rows.outOfScope.push(row);
-    else if (ignores.has(ghsaOf(adv))) rows.ignored.push(row);
+    else if (isIgnored(pkg, ghsaOf(adv))) {
+      const entry = fileIgnores.get(ghsaOf(adv));
+      rows.ignored.push(entry ? `${row} (until ${entry.expires}; ${entry.decision})` : row);
+    }
     else rows.blocking.push(row);
   }
 }
@@ -160,8 +195,12 @@ for (const [label, list] of [
   for (const r of list) console.log(`  ${r}`);
 }
 
+if (badIgnores.length) {
+  console.error(`\nFAIL: ignore entries in ${ignoreFilePath} no longer apply:`);
+  for (const b of badIgnores) console.error(`  ${b}`);
+}
 if (rows.blocking.length) {
   console.error('\nFAIL: high/critical advisories inside the published-package closure.');
-  process.exit(1);
 }
+if (badIgnores.length || rows.blocking.length) process.exit(1);
 console.log('\nOK: no unignored high/critical advisories inside the published-package closure.');
