@@ -159,6 +159,13 @@ console.log('audit-scope.mjs');
 
   r = withFixture(audit, [], [entry({ decision: undefined })]);
   check('an entry without a decision fails closed', r.code === 1, `exit ${r.code}`);
+
+  r = withFixture(audit, [], [entry({ expires: '2999-11-31' })]);
+  check('an entry with an impossible expiry date fails closed', r.code === 1, `exit ${r.code}`);
+  check('  and names it as malformed', /malformed/.test(r.out));
+
+  r = withFixture(audit, [], [entry({ expires: '2999-13-01' })]);
+  check('an entry with a month out of range fails closed', r.code === 1 && /malformed/.test(r.out), `exit ${r.code}`);
 }
 
 // --- fail closed on an unreadable manifest ---------------------------------

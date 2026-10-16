@@ -55,11 +55,16 @@ if (!auditPath || !lockPath) {
 const ignoreFilePath =
   process.env.FLNTEU_AUDIT_IGNORE_FILE ?? join(dirname(fileURLToPath(import.meta.url)), 'audit-ignore.json');
 const today = new Date().toISOString().slice(0, 10);
+// A real calendar day in YYYY-MM-DD: the shape alone lets 2026-11-31 through.
+const isRealDate = (d) => {
+  const t = Date.parse(`${d}T00:00:00Z`);
+  return /^\d{4}-\d{2}-\d{2}$/.test(d) && !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === d;
+};
 const fileIgnores = new Map(); // GHSA id -> entry
 const badIgnores = [];
 for (const entry of existsSync(ignoreFilePath) ? (JSON.parse(readFileSync(ignoreFilePath, 'utf8')).ignore ?? []) : []) {
   const missing = ['id', 'package', 'reason', 'decision', 'expires'].filter((k) => !entry?.[k]);
-  if (missing.length || !/^\d{4}-\d{2}-\d{2}$/.test(entry.expires)) {
+  if (missing.length || !isRealDate(entry.expires)) {
     badIgnores.push(`${entry?.id ?? '(no id)'}: malformed, missing or invalid ${missing.join(', ') || 'expires'}`);
   } else if (entry.expires <= today) {
     badIgnores.push(`${entry.id} (${entry.package}): expired ${entry.expires}, re-review the accepted risk`);
