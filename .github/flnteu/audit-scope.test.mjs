@@ -67,19 +67,22 @@ function fixture({ audit }) {
   return dir;
 }
 
-function run(dir, extraArgs = []) {
+function run(dir, extraArgs = [], ignoreEntries = []) {
+  const ignoreFile = join(dir, 'audit-ignore.json');
+  writeFileSync(ignoreFile, JSON.stringify({ ignore: ignoreEntries }));
   const r = spawnSync(process.execPath, [SCRIPT, join(dir, 'audit.json'), join(dir, 'bun.lock'), ...extraArgs], {
     encoding: 'utf8',
+    env: { ...process.env, FLNTEU_AUDIT_IGNORE_FILE: ignoreFile },
   });
   return { code: r.status, out: (r.stdout ?? '') + (r.stderr ?? '') };
 }
 
 const high = (title) => [{ severity: 'high', url: 'https://github.com/advisories/GHSA-test-0000-0000', title }];
 const dirs = [];
-function withFixture(audit, args = []) {
+function withFixture(audit, args = [], ignoreEntries = []) {
   const d = fixture({ audit });
   dirs.push(d);
-  return run(d, args);
+  return run(d, args, ignoreEntries);
 }
 
 console.log('audit-scope.mjs');
@@ -125,6 +128,44 @@ console.log('audit-scope.mjs');
   const r = withFixture({ 'shipped-dep': high('ignorable') }, ['--ignore=GHSA-test-0000-0000']);
   check('an explicit --ignore suppresses an in-scope high', r.code === 0, `exit ${r.code}`);
   check('  and still lists it as ignored, not silently dropped', /ignored \(in scope[^)]*\): 1/.test(r.out));
+}
+
+// --- the ignore file: an accepted risk with a re-review date ----------------
+{
+  const today = new Date().toISOString().slice(0, 10);
+  const entry = (over = {}) => ({
+    id: 'GHSA-test-0000-0000',
+    package: 'shipped-dep',
+    reason: 'no patched release',
+    decision: 'Decision (test owner, 2000-01-01)',
+    expires: '2999-12-31',
+    ...over,
+  });
+  const audit = { 'shipped-dep': high('accepted risk') };
+
+  let r = withFixture(audit, [], [entry()]);
+  check('an unexpired ignore-file entry suppresses its advisory', r.code === 0, `exit ${r.code}`);
+  check('  and lists it as ignored with its expiry', /ignored \(in scope[^)]*\): 1[\s\S]*until 2999-12-31/.test(r.out));
+
+  r = withFixture(audit, [], [entry({ expires: today })]);
+  check('an entry stops applying ON its expiry date (exit 1)', r.code === 1, `exit ${r.code}`);
+  check('  and names the expired entry', /expired/.test(r.out));
+
+  r = withFixture({}, [], [entry({ expires: '2000-01-01' })]);
+  check('an expired entry fails even when its advisory is gone', r.code === 1, `exit ${r.code}`);
+
+  r = withFixture(audit, [], [entry({ package: 'other-package' })]);
+  check('an entry for another package does not suppress the advisory', r.code === 1, `exit ${r.code}`);
+
+  r = withFixture(audit, [], [entry({ decision: undefined })]);
+  check('an entry without a decision fails closed', r.code === 1, `exit ${r.code}`);
+
+  r = withFixture(audit, [], [entry({ expires: '2999-11-31' })]);
+  check('an entry with an impossible expiry date fails closed', r.code === 1, `exit ${r.code}`);
+  check('  and names it as malformed', /malformed/.test(r.out));
+
+  r = withFixture(audit, [], [entry({ expires: '2999-13-01' })]);
+  check('an entry with a month out of range fails closed', r.code === 1 && /malformed/.test(r.out), `exit ${r.code}`);
 }
 
 // --- fail closed on an unreadable manifest ---------------------------------
