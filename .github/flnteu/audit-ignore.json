@@ -1,0 +1,20 @@
+{
+  "$comment": [
+    "Accepted high/critical advisories for audit-scope.mjs (the npm audit (band high) gate).",
+    "",
+    "One entry per advisory, matched on both id and package. Every field is required.",
+    "`expires` is the re-review date: the entry stops applying on that day and the gate",
+    "fails until someone re-reviews it. Use a short window, not a year.",
+    "",
+    "Shape: { id, package, reason, decision, expires } with expires as YYYY-MM-DD."
+  ],
+  "ignore": [
+    {
+      "id": "GHSA-vfj7-8cjw-p6xm",
+      "package": "braces",
+      "reason": "braces <=3.0.3 stack-exhaustion DoS. No patched release exists (3.0.3 is the latest). Reachable only through root build tooling (tailwindcss 3 via chokidar 3 and micromatch, fast-glob, @changesets); not in the shipped closure, which scripts/check-shipped-advisories.mjs checks.",
+      "decision": "Decision (Ákos Maurer-Somogyi, 2026-10-16): accept until 2026-11-15, then re-review",
+      "expires": "2026-11-15"
+    }
+  ]
+}
