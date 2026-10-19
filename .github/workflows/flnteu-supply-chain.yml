@@ -51,7 +51,7 @@ on:
     tags:
       - "v*"
   pull_request:
-    branches: [main]
+    branches: [main, 'epic/**']
   workflow_dispatch:
 
 permissions:
